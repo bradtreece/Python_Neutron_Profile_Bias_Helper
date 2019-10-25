@@ -164,7 +164,19 @@ class Protein_Profile:
     def __init__(self, isneutron = False):
         self.isneutron = isneutron
 
+    def convert_units(self, length_scale_factor, new_units):
+        """length_scale_factor is the multiplicative factor that takes the old length to the new one."""
+        self.units = new_units
+        
+        for i in ['zmin', 'zmax', 'zstep', 'mean', 'second_moment', 'tracking_of_mean']:
+            if hasattr(self, i):
+                setattr(self, i, getattr(self, i)*length_scale_factor)
+        
+        if hasattr(self, 'density'):
+            self.density = self.density/length_scale_factor
 
+        if hasattr(self, 'potential_scaling'):
+            self.potential_scaling = np.array([self.potential_scaling[0]*length_scale_factor, self.potential_scaling[1]/length_scale_factor**2.0])
 
     def import_configuration_file(self, filename, units = 'nm'):
         if self.isneutron == False:
@@ -241,50 +253,50 @@ class Protein_Profile:
 
 
 
-    def import_pxp_file(self, filename, column_title='median_area', units='A'):
-        if self.isneutron == False:
-            print('\n\n\nThis has just become a neutron density profile, use it as such ;)\n\n\n')
-        self.isneutron = True
-        self.filename = filename
-        
-        f = igor.load(self.filename)
-        self.zmin = f.zaxis.data[0]
-        self.zmax = f.zaxis.data[-1]
-        self.zstep = f.zaxis.data[1] - f.zaxis.data[0]
-        
-        try:
-            self.density = np.array(eval('f.'+column_title+'.data'))
-        except:
-            raise Exception(column_title+' was not found in '+self.filename)
-            return
-        
-        if (hasattr(f, 'msigma') and hasattr(f, 'psigma')):
-            self.msigma = np.array(f.msigma.data)
-            self.psigma = np.array(f.psigma.data)
-            
-        if round( (self.zmax - self.zmin)/self.zstep, 8)%1.0 != 0.0:
-            raise Exception('zmin and zmax are not separated by an integral multiple of zsteps, problem with the file?')
-            return
-        elif round( ( ( (self.zmax - self.zmin) / self.zstep ) + 1 ), 8) != np.shape(self.density)[0]:
-            raise Exception('The number of points in the first dimension of the density array does not match the z-dimensions supplied.\n    This is a weird error for neutron data.')
-            return
-        
-        self.units = units
-        print('\n\n\nUnits are assumed to be '+self.units+""". Please convert the units if this is incorrect.\n\n\n""")
-        
-        # Normalize the density provided
-        norm = sum(self.density)*self.zstep
-        if norm != 1.0:
-            print('\n\n\nThe profile has area = '+`norm`+""", changing that to be 1.\n    You're welcome.\n\n\n""")
-            self.density = self.density / norm
-            if hasattr(self, 'msigma'):
-                self.msigma = self.msigma / norm
-                self.psigma = self.psigma / norm
-        
-        # Calculate the mean and width of the profile
-        self.mean = sum([ self.density[i]*(self.zmin + i*self.zstep) for i in range(len(self.density)) ])*self.zstep
-        second_moment = sum([ self.density[i]*(self.zmin + i*self.zstep - self.mean)**2.0 for i in range(len(self.density)) ])*self.zstep
-        self.second_moment = np.sqrt(second_moment)
+#    def import_pxp_file(self, filename, column_title='median_area', units='A'):
+#        if self.isneutron == False:
+#            print('\n\n\nThis has just become a neutron density profile, use it as such ;)\n\n\n')
+#        self.isneutron = True
+#        self.filename = filename
+#        
+#        f = igor.load(self.filename)
+#        self.zmin = f.zaxis.data[0]
+#        self.zmax = f.zaxis.data[-1]
+#        self.zstep = f.zaxis.data[1] - f.zaxis.data[0]
+#        
+#        try:
+#            self.density = np.array(eval('f.'+column_title+'.data'))
+#        except:
+#            raise Exception(column_title+' was not found in '+self.filename)
+#            return
+#        
+#        if (hasattr(f, 'msigma') and hasattr(f, 'psigma')):
+#            self.msigma = np.array(f.msigma.data)
+#            self.psigma = np.array(f.psigma.data)
+#            
+#        if round( (self.zmax - self.zmin)/self.zstep, 8)%1.0 != 0.0:
+#            raise Exception('zmin and zmax are not separated by an integral multiple of zsteps, problem with the file?')
+#            return
+#        elif round( ( ( (self.zmax - self.zmin) / self.zstep ) + 1 ), 8) != np.shape(self.density)[0]:
+#            raise Exception('The number of points in the first dimension of the density array does not match the z-dimensions supplied.\n    This is a weird error for neutron data.')
+#            return
+#        
+#        self.units = units
+#        print('\n\n\nUnits are assumed to be '+self.units+""". Please convert the units if this is incorrect.\n\n\n""")
+#        
+#        # Normalize the density provided
+#        norm = sum(self.density)*self.zstep
+#        if norm != 1.0:
+#            print('\n\n\nThe profile has area = '+`norm`+""", changing that to be 1.\n    You're welcome.\n\n\n""")
+#            self.density = self.density / norm
+#            if hasattr(self, 'msigma'):
+#                self.msigma = self.msigma / norm
+#                self.psigma = self.psigma / norm
+#        
+#        # Calculate the mean and width of the profile
+#        self.mean = sum([ self.density[i]*(self.zmin + i*self.zstep) for i in range(len(self.density)) ])*self.zstep
+#        second_moment = sum([ self.density[i]*(self.zmin + i*self.zstep - self.mean)**2.0 for i in range(len(self.density)) ])*self.zstep
+#        self.second_moment = np.sqrt(second_moment)
 
 
 
@@ -393,21 +405,72 @@ class Protein_Profile:
         
         self.calculate_simulation_density(protein_selection, frames, isComparison, target_profile)
         
+class Protein_From_PXP(Protein_Profile):
+    def __init__(self, PXP_File = None, data_column_title = 'median_area',
+                 msigma_column_title = 'msigma', psigma_column_title = 'psigma',
+                 units = 'A'):
+        self.isneutron = True
+        self.data_column_title = data_column_title
+        self.msigma_column_title = msigma_column_title
+        self.psigma_column_title = psigma_column_title
+        self.units = units
+        if PXP_File:
+            self.import_pxp_file(PXP_File, data_column_title = data_column_title,
+                                 msigma_column_title = msigma_column_title,
+                                 psigma_columnt_title = psigma_column_title,
+                                 units = units)
         
+    def import_pxp_file(self, filename, data_column_title='median_area',
+                        msigma_column_title = None, psigma_column_title = None,
+                        units='A'):
+        self.isneutron = True
+        self.filename = filename
         
-    def convert_units(self, length_scale_factor, new_units):
-        """length_scale_factor is the multiplicative factor that takes the old length to the new one."""
-        self.units = new_units
+        # Find the z-axis data
+        f = igor.load(self.filename)
+        self.zmin = f.zaxis.data[0]
+        self.zmax = f.zaxis.data[-1]
+        self.zstep = f.zaxis.data[1] - f.zaxis.data[0]
         
-        for i in ['zmin', 'zmax', 'zstep', 'mean', 'second_moment', 'tracking_of_mean']:
-            if hasattr(self, i):
-                setattr(self, i, getattr(self, i)*length_scale_factor)
+        # Locate protein median data
+        try:
+            self.density = np.array(eval('f.'+data_column_title+'.data'))
+        except:
+            raise Exception(data_column_title + ' was not found in '+ filename)
+            return
+        # Locate confidence intervals
+        if ((msigma_column_title) and (psigma_column_title)):
+            if not (hasattr(f, 'msigma') and hasattr(f, 'psigma')):
+                raise Exception("Could not find one or both of '" + msigma_column_title
+                      + "' and '" + psigma_column_title + "' in '" + filename + "'")
+            self.msigma = np.array(eval('f.' + msigma_column_title + '.data'))
+            self.psigma = np.array(eval('f.' + psigma_column_title + '.data'))
+        # Check the array lengths for inconsistencies
+        if round( (self.zmax - self.zmin)/self.zstep, 8)%1.0 != 0.0:
+            raise Exception('zmin and zmax are not separated by an integral multiple of equal zsteps, problem with the file?')
+            return
+        elif round( ( ( (self.zmax - self.zmin) / self.zstep ) + 1 ), 8) != np.shape(self.density)[0]:
+            raise Exception('The number of points in the first dimension of the density array does not match the z-dimensions supplied.\n    This is a weird error for neutron data.')
+            return
         
-        if hasattr(self, 'density'):
-            self.density = self.density/length_scale_factor
-
-        if hasattr(self, 'potential_scaling'):
-            self.potential_scaling = np.array([self.potential_scaling[0]*length_scale_factor, self.potential_scaling[1]/length_scale_factor**2.0])
+        self.units = units
+        print('\n\n\nUnits in the pxp are assumed to be '+self.units+""". Please convert the units if this is incorrect.""")
+        print(""" Try 'instance_name'.convert_units(1.0, 'desired_units')\n\n\n""")
+        
+        # Normalize the density provided
+        norm = sum(self.density)*self.zstep
+        self.norm = norm
+        if norm != 1.0:
+            print('\n\n\nThe profile has area = '+`norm`+""", changing that to be 1.\n The normalization is stored in 'instance_name'.norm\n\n\n""")
+            self.density = self.density / norm
+            if hasattr(self, 'msigma'):
+                self.msigma = self.msigma / norm
+                self.psigma = self.psigma / norm
+        
+        # Calculate the mean and width of the profile
+        self.mean = sum([ self.density[i]*(self.zmin + i*self.zstep) for i in range(len(self.density)) ])*self.zstep
+        second_moment = sum([ self.density[i]*(self.zmin + i*self.zstep - self.mean)**2.0 for i in range(len(self.density)) ])*self.zstep
+        self.second_moment = np.sqrt(second_moment)
 
 
 

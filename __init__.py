@@ -6,4 +6,4 @@ Created on Thu Apr 12 14:58:33 2018
 @author: btreece
 """
 
-__all__=['classes', 'plotting']
+__all__=['classes', 'plotting', 'functions']
