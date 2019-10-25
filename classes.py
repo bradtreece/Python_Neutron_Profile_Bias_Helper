@@ -404,12 +404,16 @@ class Protein_Profile:
         protein_selection = u.select_atoms('bynum '+`atom_groups[0][0]`+':'+`atom_groups[0][1]`)
         
         self.calculate_simulation_density(protein_selection, frames, isComparison, target_profile)
-        
+
+##################################
+# Profile From Neutron Data File #
+##################################
 class Protein_From_PXP(Protein_Profile):
     def __init__(self, PXP_File = None, data_column_title = 'median_area',
                  msigma_column_title = 'msigma', psigma_column_title = 'psigma',
                  units = 'A'):
         self.isneutron = True
+        self.filename = PXP_File
         self.data_column_title = data_column_title
         self.msigma_column_title = msigma_column_title
         self.psigma_column_title = psigma_column_title
@@ -420,31 +424,43 @@ class Protein_From_PXP(Protein_Profile):
                                  psigma_columnt_title = psigma_column_title,
                                  units = units)
         
-    def import_pxp_file(self, filename, data_column_title='median_area',
+    def import_pxp_file(self, filename = None, data_column_title = None,
                         msigma_column_title = None, psigma_column_title = None,
-                        units='A'):
-        self.isneutron = True
-        self.filename = filename
+                        units='A', include_confidence = True):
+        if ((not filename) and (not self.filename)):
+            raise Exception('No filename given to this object or function.')
+        elif (filename):
+            self.filename = filename
+
+        if (data_column_title):
+            self.data_column_title = data_column_title
+        if (msigma_column_title):
+            self.msigma_column_title = msigma_column_title
+        if (psigma_column_title):
+            self.psigma_column_title = psigma_column_title
+        
+        f = igor.load(self.filename)
         
         # Find the z-axis data
-        f = igor.load(self.filename)
         self.zmin = f.zaxis.data[0]
         self.zmax = f.zaxis.data[-1]
         self.zstep = f.zaxis.data[1] - f.zaxis.data[0]
         
         # Locate protein median data
         try:
-            self.density = np.array(eval('f.'+data_column_title+'.data'))
+            self.density = np.array(eval('f.'+self.data_column_title+'.data'))
         except:
-            raise Exception(data_column_title + ' was not found in '+ filename)
+            raise Exception('Data for ' + self.data_column_title + ' was not found in '+ self.filename)
             return
+
         # Locate confidence intervals
-        if ((msigma_column_title) and (psigma_column_title)):
-            if not (hasattr(f, 'msigma') and hasattr(f, 'psigma')):
-                raise Exception("Could not find one or both of '" + msigma_column_title
-                      + "' and '" + psigma_column_title + "' in '" + filename + "'")
-            self.msigma = np.array(eval('f.' + msigma_column_title + '.data'))
-            self.psigma = np.array(eval('f.' + psigma_column_title + '.data'))
+        if include_confidence:
+            if not (hasattr(f, self.msigma_column_title) and hasattr(f, self.psigma_column_title)):
+                raise Exception("Could not find one or both of '" + self.msigma_column_title
+                                + "' and '" + self.psigma_column_title + "' in '" + self.filename + "'")
+            self.msigma = np.array(eval('f.' + self.msigma_column_title + '.data'))
+            self.psigma = np.array(eval('f.' + self.psigma_column_title + '.data'))
+
         # Check the array lengths for inconsistencies
         if round( (self.zmax - self.zmin)/self.zstep, 8)%1.0 != 0.0:
             raise Exception('zmin and zmax are not separated by an integral multiple of equal zsteps, problem with the file?')
@@ -463,16 +479,21 @@ class Protein_From_PXP(Protein_Profile):
         if norm != 1.0:
             print('\n\n\nThe profile has area = '+`norm`+""", changing that to be 1.\n The normalization is stored in 'instance_name'.norm\n\n\n""")
             self.density = self.density / norm
-            if hasattr(self, 'msigma'):
+            if include_confidence:
                 self.msigma = self.msigma / norm
                 self.psigma = self.psigma / norm
         
         # Calculate the mean and width of the profile
         self.mean = sum([ self.density[i]*(self.zmin + i*self.zstep) for i in range(len(self.density)) ])*self.zstep
-        second_moment = sum([ self.density[i]*(self.zmin + i*self.zstep - self.mean)**2.0 for i in range(len(self.density)) ])*self.zstep
-        self.second_moment = np.sqrt(second_moment)
+        square_sum = sum([ self.density[i]*(self.zmin + i*self.zstep - self.mean)**2.0 for i in range(len(self.density)) ])*self.zstep
+        self.second_moment = np.sqrt(square_sum)
 
-
+##############################################################
+# Profile From GROMACS Configuration File (Used For Biasing) #
+##############################################################
+#class Protein_From_Configuration(Protein_Profile):
+#    def __init__(self, configuration_file = None):
+#        if 
 
 ##############################
 ### Bilayer-Type Densities ###
