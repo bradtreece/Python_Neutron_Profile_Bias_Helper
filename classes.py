@@ -1,3 +1,101 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 """
@@ -178,125 +276,78 @@ class Protein_Profile:
         if hasattr(self, 'potential_scaling'):
             self.potential_scaling = np.array([self.potential_scaling[0]*length_scale_factor, self.potential_scaling[1]/length_scale_factor**2.0])
 
-    def import_configuration_file(self, filename, units = 'nm'):
-        if self.isneutron == False:
-            print('\n\n\nThis has just become a neutron density profile, use it as such ;)\n\n\n')
-        self.isneutron = True
-        self.filename = filename
-
-        file_tmp = open(self.filename,'r')
-        lines = file_tmp.readlines()
-        file_tmp.close()
-        atom_groups = []
-        density = []
-        weights = []
-        radii = []
-
-        for i in lines:
-            if i.split()[0] == 'u':
-                scaling = [float(j) for j in i.split()[1:]]
-            if i.split()[0] == 'n':
-                atom_groups.append([int(i.split()[1]), int(i.split()[2])])
-            if i.split()[0] == 'p':
-                zmin = float(i.split()[1])
-                zmax = float(i.split()[2])
-                zstep = float(i.split()[3])
-            if i.split()[0] == 'd':
-                tmp = i.split()[1:]
-                for j in tmp:
-                    density.append(float(j))
-            if i.split()[0] == 'w':
-                tmp = i.split()[1:]
-                for j in tmp:
-                    weights.append(float(j))
-            if i.split()[0] == 'r':
-                tmp = i.split()[1:]
-                for j in tmp:
-                    radii.append(float(j))
-        
-        self.atom_groups = np.array(atom_groups)
-        self.potential_scaling = np.array(scaling)
-        self.zmin = zmin
-        self.zmax = zmax
-        self.zstep = zstep
-        self.density = np.array(density)
-        self.weights = np.array(weights)
-        self.radii = np.array(radii)
-        
-        # Check the lengths of the arrays and endpoints
-        if round( (self.zmax - self.zmin)/self.zstep, 8)%1.0 != 0.0:
-            raise Exception('zmin and zmax are not separated by an integral multiple of zsteps.')
-            return
-        elif round( ( ( (self.zmax - self.zmin) / self.zstep ) + 1 ), 8) != np.shape(self.density)[0]:
-            raise Exception('The number of points in the first dimension of the density array does not match the z-dimensions supplied.\n    This class assumes zmax is the last entry of the z-array.')
-            return
-
-        # Normalize the density provided
-        if sum(self.density)*self.zstep != 1.0:
-            print('\n\n\nThe profile has area = '+`sum(self.density)*self.zstep`+', changing that to be 1.\n    Check your weights.\n\n\n')
-            self.density = self.density / (sum(self.density)*self.zstep)
-        
-        self.units = units
-        print('\n\n\nUnits are assumed to be '+self.units+""". Please change the property 'units' if this is incorrect.\n\n\n""")
-        
-        # Calculate the mean and width of the profile
-        self.mean = sum([ self.density[i]*(self.zmin + i*self.zstep) for i in range(len(self.density)) ])*self.zstep
-        second_moment = sum([ self.density[i]*(self.zmin + i*self.zstep - self.mean)**2.0 for i in range(len(self.density)) ])*self.zstep
-        self.second_moment = np.sqrt(second_moment)
-        
-        if ( np.shape(self.radii) == 0 ):
-            # If no radii for the atoms are supplied, set to 1A
-            if self.units == 'nm':
-                self.radii = 0.1*np.ones(self.atomgroups[0,1] - self.atomgroups[0,0] + 1)
-            if self.units == 'A':
-                self.radii = np.ones(self.atomgroups[0,1] - self.atomgroups[0,0] + 1)
-
-
-
-#    def import_pxp_file(self, filename, column_title='median_area', units='A'):
+#    def import_configuration_file(self, filename, units = 'nm'):
 #        if self.isneutron == False:
 #            print('\n\n\nThis has just become a neutron density profile, use it as such ;)\n\n\n')
 #        self.isneutron = True
 #        self.filename = filename
+#
+#        file_tmp = open(self.filename,'r')
+#        lines = file_tmp.readlines()
+#        file_tmp.close()
+#        atom_groups = []
+#        density = []
+#        weights = []
+#        radii = []
+#
+#        for i in lines:
+#            if i.split()[0] == 'u':
+#                scaling = [float(j) for j in i.split()[1:]]
+#            if i.split()[0] == 'n':
+#                atom_groups.append([int(i.split()[1]), int(i.split()[2])])
+#            if i.split()[0] == 'p':
+#                zmin = float(i.split()[1])
+#                zmax = float(i.split()[2])
+#                zstep = float(i.split()[3])
+#            if i.split()[0] == 'd':
+#                tmp = i.split()[1:]
+#                for j in tmp:
+#                    density.append(float(j))
+#            if i.split()[0] == 'w':
+#                tmp = i.split()[1:]
+#                for j in tmp:
+#                    weights.append(float(j))
+#            if i.split()[0] == 'r':
+#                tmp = i.split()[1:]
+#                for j in tmp:
+#                    radii.append(float(j))
 #        
-#        f = igor.load(self.filename)
-#        self.zmin = f.zaxis.data[0]
-#        self.zmax = f.zaxis.data[-1]
-#        self.zstep = f.zaxis.data[1] - f.zaxis.data[0]
+#        self.atom_groups = np.array(atom_groups)
+#        self.potential_scaling = np.array(scaling)
+#        self.zmin = zmin
+#        self.zmax = zmax
+#        self.zstep = zstep
+#        self.density = np.array(density)
+#        self.weights = np.array(weights)
+#        self.radii = np.array(radii)
 #        
-#        try:
-#            self.density = np.array(eval('f.'+column_title+'.data'))
-#        except:
-#            raise Exception(column_title+' was not found in '+self.filename)
-#            return
-#        
-#        if (hasattr(f, 'msigma') and hasattr(f, 'psigma')):
-#            self.msigma = np.array(f.msigma.data)
-#            self.psigma = np.array(f.psigma.data)
-#            
+#        # Check the lengths of the arrays and endpoints
 #        if round( (self.zmax - self.zmin)/self.zstep, 8)%1.0 != 0.0:
-#            raise Exception('zmin and zmax are not separated by an integral multiple of zsteps, problem with the file?')
+#            raise Exception('zmin and zmax are not separated by an integral multiple of zsteps.')
 #            return
 #        elif round( ( ( (self.zmax - self.zmin) / self.zstep ) + 1 ), 8) != np.shape(self.density)[0]:
-#            raise Exception('The number of points in the first dimension of the density array does not match the z-dimensions supplied.\n    This is a weird error for neutron data.')
+#            raise Exception('The number of points in the first dimension of the density array does not match the z-dimensions supplied.\n    This class assumes zmax is the last entry of the z-array.')
 #            return
+#
+#        # Normalize the density provided
+#        if sum(self.density)*self.zstep != 1.0:
+#            print('\n\n\nThe profile has area = '+`sum(self.density)*self.zstep`+', changing that to be 1.\n    Check your weights.\n\n\n')
+#            self.density = self.density / (sum(self.density)*self.zstep)
 #        
 #        self.units = units
-#        print('\n\n\nUnits are assumed to be '+self.units+""". Please convert the units if this is incorrect.\n\n\n""")
-#        
-#        # Normalize the density provided
-#        norm = sum(self.density)*self.zstep
-#        if norm != 1.0:
-#            print('\n\n\nThe profile has area = '+`norm`+""", changing that to be 1.\n    You're welcome.\n\n\n""")
-#            self.density = self.density / norm
-#            if hasattr(self, 'msigma'):
-#                self.msigma = self.msigma / norm
-#                self.psigma = self.psigma / norm
+#        print('\n\n\nUnits are assumed to be '+self.units+""". Please change the property 'units' if this is incorrect.\n\n\n""")
 #        
 #        # Calculate the mean and width of the profile
 #        self.mean = sum([ self.density[i]*(self.zmin + i*self.zstep) for i in range(len(self.density)) ])*self.zstep
 #        second_moment = sum([ self.density[i]*(self.zmin + i*self.zstep - self.mean)**2.0 for i in range(len(self.density)) ])*self.zstep
 #        self.second_moment = np.sqrt(second_moment)
+#        
+#        if ( np.shape(self.radii) == 0 ):
+#            # If no radii for the atoms are supplied, set to 1A
+#            if self.units == 'nm':
+#                self.radii = 0.1*np.ones(self.atomgroups[0,1] - self.atomgroups[0,0] + 1)
+#            if self.units == 'A':
+#                self.radii = np.ones(self.atomgroups[0,1] - self.atomgroups[0,0] + 1)
 
 
 
@@ -491,9 +542,98 @@ class Protein_From_PXP(Protein_Profile):
 ##############################################################
 # Profile From GROMACS Configuration File (Used For Biasing) #
 ##############################################################
-#class Protein_From_Configuration(Protein_Profile):
-#    def __init__(self, configuration_file = None):
-#        if 
+class Protein_From_Configuration(Protein_Profile):
+    def __init__(self, configuration_file = None, units = 'nm'):
+        self.isneutron = True
+        self.filename = configuration_file
+        self.units = units
+  ################################
+    def import_configuration_file(self, filename = None, units = 'nm'):
+        if ((not filename) and (not self.filename)):
+            raise Exception('No filename given to this object or function.')
+        elif (filename):
+            self.filename = filename
+
+        file_tmp = open(self.filename,'r')
+        lines = file_tmp.readlines()
+        file_tmp.close()
+        atom_groups = []
+        density = []
+        weights = []
+        radii = []
+
+        for i in lines:
+            if i.split()[0] == 'u':
+                scaling = [float(j) for j in i.split()[1:]]
+            if i.split()[0] == 'n':
+                atom_groups.append([int(i.split()[1]), int(i.split()[2])])
+            if i.split()[0] == 'p':
+                zmin = float(i.split()[1])
+                zmax = float(i.split()[2])
+                zstep = float(i.split()[3])
+            if i.split()[0] == 'd':
+                tmp = i.split()[1:]
+                for j in tmp:
+                    density.append(float(j))
+            if i.split()[0] == 'w':
+                tmp = i.split()[1:]
+                for j in tmp:
+                    weights.append(float(j))
+            if i.split()[0] == 'r':
+                tmp = i.split()[1:]
+                for j in tmp:
+                    radii.append(float(j))
+        
+        self.atom_groups = np.array(atom_groups)
+        self.potential_scaling = np.array(scaling)
+        self.zmin = zmin
+        self.zmax = zmax
+        self.zstep = zstep
+        self.density = np.array(density)
+        self.weights = np.array(weights)
+        self.radii = np.array(radii)
+        
+        # Check the lengths of the arrays and endpoints
+        if round( (self.zmax - self.zmin)/self.zstep, 8)%1.0 != 0.0:
+            raise Exception('zmin and zmax are not separated by an integral multiple of zsteps.')
+            return
+        elif round( ( ( (self.zmax - self.zmin) / self.zstep ) + 1 ), 8) != np.shape(self.density)[0]:
+            raise Exception('The number of points in the first dimension of the density array does not match the z-dimensions supplied.\n    This class assumes zmax is the last entry of the z-array.')
+            return
+
+        # Normalize the density provided
+        self.norm = sum(self.density)*self.zstep
+        if self.norm != 1.0:
+            print('\n\n\nThe profile has area = '+`self.norm`+""", changing that to be 1.\n The normalization is stored in 'instance_name'.norm\n\n\n""")           
+            self.density = self.density / self.norm
+        
+        self.units = units
+        print('\n\n\nUnits are assumed to be '+self.units+""". Please change the property 'units' if this is incorrect.\n\n\n""")
+        
+        # Calculate the mean and width of the profile
+        self.mean = sum([ self.density[i]*(self.zmin + i*self.zstep) for i in range(len(self.density)) ])*self.zstep
+        second_moment = sum([ self.density[i]*(self.zmin + i*self.zstep - self.mean)**2.0 for i in range(len(self.density)) ])*self.zstep
+        self.second_moment = np.sqrt(second_moment)
+        
+        if ( np.shape(self.radii)[0] == 0 ):
+            # If no radii for the atoms are supplied, set to 1A
+            if self.units == 'nm':
+                self.radii = 0.1*np.ones(self.atom_groups[0,1] - self.atom_groups[0,0] + 1)
+            elif self.units == 'A':
+                self.radii = np.ones(self.atom_groups[0,1] - self.atom_groups[0,0] + 1)
+            else:
+                print("\n\n\nUnknown units for default radius definition. Using 1.0, please adjust accordingly.\n\n\n")
+                self.radii = np.ones(self.atom_groups[0,1] - self.atom_groups[0,0] + 1)
+        self.volume = np.sum(self.radii**3.0)
+        
+######################################
+# Profile From Simulation Trajectory #
+#######################################
+#class Protein_From_Simulation(Protein_Profile):
+#    def __init__(self, units = 'A'):
+#        self.isneutron = False
+##        self.filename = configuration_file
+#        self.units = units
 
 ##############################
 ### Bilayer-Type Densities ###
