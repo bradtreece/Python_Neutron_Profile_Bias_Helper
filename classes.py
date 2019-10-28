@@ -1,101 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 """
@@ -266,195 +168,20 @@ class Protein_Profile:
         """length_scale_factor is the multiplicative factor that takes the old length to the new one."""
         self.units = new_units
         
-        for i in ['zmin', 'zmax', 'zstep', 'mean', 'second_moment', 'tracking_of_mean']:
+        for i in ['zmin', 'zmax', 'zstep', 'mean', 'second_moment', 'tracking_of_mean', 'radii']:
             if hasattr(self, i):
                 setattr(self, i, getattr(self, i)*length_scale_factor)
         
         if hasattr(self, 'density'):
             self.density = self.density/length_scale_factor
+            
+        if hasattr(self, 'volume'):
+            self.volume = self.volume*(length_scale_factor**3.0)
 
         if hasattr(self, 'potential_scaling'):
             self.potential_scaling = np.array([self.potential_scaling[0]*length_scale_factor, self.potential_scaling[1]/length_scale_factor**2.0])
 
-#    def import_configuration_file(self, filename, units = 'nm'):
-#        if self.isneutron == False:
-#            print('\n\n\nThis has just become a neutron density profile, use it as such ;)\n\n\n')
-#        self.isneutron = True
-#        self.filename = filename
-#
-#        file_tmp = open(self.filename,'r')
-#        lines = file_tmp.readlines()
-#        file_tmp.close()
-#        atom_groups = []
-#        density = []
-#        weights = []
-#        radii = []
-#
-#        for i in lines:
-#            if i.split()[0] == 'u':
-#                scaling = [float(j) for j in i.split()[1:]]
-#            if i.split()[0] == 'n':
-#                atom_groups.append([int(i.split()[1]), int(i.split()[2])])
-#            if i.split()[0] == 'p':
-#                zmin = float(i.split()[1])
-#                zmax = float(i.split()[2])
-#                zstep = float(i.split()[3])
-#            if i.split()[0] == 'd':
-#                tmp = i.split()[1:]
-#                for j in tmp:
-#                    density.append(float(j))
-#            if i.split()[0] == 'w':
-#                tmp = i.split()[1:]
-#                for j in tmp:
-#                    weights.append(float(j))
-#            if i.split()[0] == 'r':
-#                tmp = i.split()[1:]
-#                for j in tmp:
-#                    radii.append(float(j))
-#        
-#        self.atom_groups = np.array(atom_groups)
-#        self.potential_scaling = np.array(scaling)
-#        self.zmin = zmin
-#        self.zmax = zmax
-#        self.zstep = zstep
-#        self.density = np.array(density)
-#        self.weights = np.array(weights)
-#        self.radii = np.array(radii)
-#        
-#        # Check the lengths of the arrays and endpoints
-#        if round( (self.zmax - self.zmin)/self.zstep, 8)%1.0 != 0.0:
-#            raise Exception('zmin and zmax are not separated by an integral multiple of zsteps.')
-#            return
-#        elif round( ( ( (self.zmax - self.zmin) / self.zstep ) + 1 ), 8) != np.shape(self.density)[0]:
-#            raise Exception('The number of points in the first dimension of the density array does not match the z-dimensions supplied.\n    This class assumes zmax is the last entry of the z-array.')
-#            return
-#
-#        # Normalize the density provided
-#        if sum(self.density)*self.zstep != 1.0:
-#            print('\n\n\nThe profile has area = '+`sum(self.density)*self.zstep`+', changing that to be 1.\n    Check your weights.\n\n\n')
-#            self.density = self.density / (sum(self.density)*self.zstep)
-#        
-#        self.units = units
-#        print('\n\n\nUnits are assumed to be '+self.units+""". Please change the property 'units' if this is incorrect.\n\n\n""")
-#        
-#        # Calculate the mean and width of the profile
-#        self.mean = sum([ self.density[i]*(self.zmin + i*self.zstep) for i in range(len(self.density)) ])*self.zstep
-#        second_moment = sum([ self.density[i]*(self.zmin + i*self.zstep - self.mean)**2.0 for i in range(len(self.density)) ])*self.zstep
-#        self.second_moment = np.sqrt(second_moment)
-#        
-#        if ( np.shape(self.radii) == 0 ):
-#            # If no radii for the atoms are supplied, set to 1A
-#            if self.units == 'nm':
-#                self.radii = 0.1*np.ones(self.atomgroups[0,1] - self.atomgroups[0,0] + 1)
-#            if self.units == 'A':
-#                self.radii = np.ones(self.atomgroups[0,1] - self.atomgroups[0,0] + 1)
 
-
-
-    def calculate_simulation_density(self, protein_selection, frames, isComparison=False, target_profile = None):
-        #-------- Comparison to Target --------#
-        if isComparison:
-            if not isinstance(target_profile, Protein_Profile):
-                raise ValueError(Protein_Profile)
-            if not target_profile.isneutron:
-                raise Exception("The target provided is not neutron")
-            if target_profile.units != "A":
-                raise Exception("Please convert target to Angstroms")
-            if target_profile.zmin != self.zmin:
-                raise Exception("Minimum values of densities to be compared do not match")
-            if target_profile.zstep != self.zstep:
-                raise Exception("The step size of densities to be compared do not match")
-            self.sq_sum_diff_of_avg_dens = []
-            self.sq_sum_diff_of_inst_dens = []
-         #--------------------------------------#
-        
-        self.frames = frames
-        prot_dens = 0*np.arange(0.,10000.)
-        sigma = 1.0
-        # Currently, the averaging only happens over one molecule
-        nrm   = (self.atom_groups[0][1] - self.atom_groups[0][0] + 1)*sigma*(2*np.pi)**0.5
-        
-        tracking_of_mean = []
-
-        for t in frames:
-            protein_selection.universe.trajectory[t]
-            z_bbox = protein_selection.universe.dimensions[2]
-            temp_dens = 0*prot_dens
-            
-            for r in protein_selection.positions:
-                z = r[2]
-                if z < self.zmin + 3.0:
-                    z += z_bbox
-                z_low = np.floor( (z - 3.0 - self.zmin) / self.zstep)
-                z_hi  = np.ceil( (z + 3.0 - self.zmin) / self.zstep)
-                for j in range(int(z_low), int(z_hi)):
-                    temp_dens[j] += np.exp(-0.5*(z - (self.zmin + self.zstep*j))**2.0/((sigma)**2.0)) / nrm
-            
-            temp_dens = temp_dens / (sum(temp_dens)*self.zstep)
-            mean = sum([temp_dens[i]*(self.zmin + i*self.zstep) for i in range(len(temp_dens))])*self.zstep
-            tracking_of_mean.append(mean)
-            prot_dens += temp_dens
-         #-------- Comparison to Target --------#          
-            if isComparison:
-                temp_avg_dens = prot_dens / (sum(prot_dens)*self.zstep)
-                sq_diff =sum((temp_avg_dens - np.array([i for i in target_profile.density] + [0.0 for i in range(len(temp_avg_dens) - len(target_profile.density))]))**2.0)
-                self.sq_sum_diff_of_avg_dens.append(sq_diff)
-                
-                sq_diff =sum((temp_dens - np.array([i for i in target_profile.density] + [0.0 for i in range(len(temp_dens) - len(target_profile.density))]))**2.0)
-                self.sq_sum_diff_of_inst_dens.append(sq_diff)
-         #--------------------------------------#    
-        
-        self.density = prot_dens / (sum(prot_dens)*self.zstep)
-        self.tracking_of_mean = tracking_of_mean
-        self.units = 'A'
-        
-        # Calculate the mean and width of the profile
-        self.mean = sum([ self.density[i]*(self.zmin + i*self.zstep) for i in range(len(self.density)) ])*self.zstep
-        second_moment = sum([ self.density[i]*(self.zmin + i*self.zstep - self.mean)**2.0 for i in range(len(self.density)) ])*self.zstep
-        self.second_moment = np.sqrt(second_moment)
-
-
-
-    def import_simulation_density_from_atom_selection(self, protein_selection, frames, zmin, zstep, atom_groups, units = 'A', isComparison=False, target_profile = None):
-        if units != 'A':
-            raise Exception('Sorry, MDAnalysis uses Angstroms. Please convert post import using class function. Adjust z-axis as appropriate.')
-            return
-        
-        if len(np.shape(atom_groups)) != 2:
-            raise Exception('atom_groups should be a list of lists (even if you are forcing only one molecule)')
-            return
-        
-        self.zmin = zmin
-        self.zstep = zstep
-        # There are 10000 entries in the GROMACS z-axis
-        self.zmax = self.zmin + 9999.0*self.zstep
-        self.atom_groups = np.array(atom_groups)
-        
-        self.calculate_simulation_density(protein_selection, frames, isComparison, target_profile)
-    
-
-
-    def import_simulation_density_from_trajectory(self, structure_file, trajectory_file, frames, zmin, zstep, atom_groups, units = 'A', isComparison=False, target_profile = None):
-        if units != 'A':
-            raise Exception('Sorry, MDAnalysis uses Angstroms. Please convert post import using class function. Adjust z-axis as appropriate.')
-            return
-        
-        if len(np.shape(atom_groups)) != 2:
-            raise Exception('atom_groups should be a list of lists (even if you are forcing only one molecule)')
-            return
-        
-        self.zmin = zmin
-        self.zstep = zstep
-        # There are 10000 entries in the GROMACS z-axis
-        self.zmax = self.zmin + 9999.0*self.zstep
-        self.atom_groups = np.array(atom_groups)
-
-        u = MDAnalysis.Universe(structure_file, trajectory_file)
-        if len(atom_groups) > 1:
-            raise Exception('Sorry, this module does not yet support multiple molecules.')
-        protein_selection = u.select_atoms('bynum '+`atom_groups[0][0]`+':'+`atom_groups[0][1]`)
-        
-        self.calculate_simulation_density(protein_selection, frames, isComparison, target_profile)
 
 ##################################
 # Profile From Neutron Data File #
@@ -629,11 +356,217 @@ class Protein_From_Configuration(Protein_Profile):
 ######################################
 # Profile From Simulation Trajectory #
 #######################################
-#class Protein_From_Simulation(Protein_Profile):
-#    def __init__(self, units = 'A'):
-#        self.isneutron = False
-##        self.filename = configuration_file
-#        self.units = units
+class Protein_From_Simulation(Protein_Profile):
+    def __init__(self, structure_file = None, trajectory_file = None, atomselection = None, reference_profile_from_configuration = None, units = 'A'):
+        self.isneutron = False
+        if (structure_file):
+            self.structure_file = structure_file
+        if (trajectory_file):
+            self.trajectory_file = trajectory_file
+        if (atomselection):
+            self.structure_file = atomselection.universe.filename
+            self.trajectory_file = atomselection.universe.trajectory.filename
+            self.atomselection = atomselection
+        if (reference_profile_from_configuration):
+            if not isinstance(reference_profile_from_configuration, Protein_From_Configuration):
+                raise Exception("Reference profile is not a 'Protein_From_Configuration' object.")
+            if ((not hasattr(reference_profile_from_configuration, 'atom_groups'))
+            or (not hasattr(reference_profile_from_configuration, 'density'))
+            or (not hasattr(reference_profile_from_configuration, 'radii'))):
+                raise Exception("Some attributes were not found in your reference profile, did you import it correctly?")
+            self.reference_profile = reference_profile_from_configuration
+        self.units = units
+        
+    def calculate_simulation_density(self):
+#        #-------- Comparison to Target --------#
+#        if isComparison:
+#            if not isinstance(target_profile, Protein_Profile):
+#                raise ValueError(Protein_Profile)
+#            if not target_profile.isneutron:
+#                raise Exception("The target provided is not neutron")
+#            if target_profile.units != "A":
+#                raise Exception("Please convert target to Angstroms")
+#            if target_profile.zmin != self.zmin:
+#                raise Exception("Minimum values of densities to be compared do not match")
+#            if target_profile.zstep != self.zstep:
+#                raise Exception("The step size of densities to be compared do not match")
+#            self.sq_sum_diff_of_avg_dens = []
+#            self.sq_sum_diff_of_inst_dens = []
+#         #--------------------------------------#
+        
+        self.density_trajectory = []
+        prot_dens = 0*np.arange(self.zmin, self.zmax + 0.5*self.zstep, self.zstep)
+        # Currently, the averaging only happens over one molecule
+        nrm = self.volume*(2*np.pi)**0.5
+        
+        tracking_of_mean = []
+        tracking_of_second_moment = []
+
+        for t in self.frames:
+            self.atomselection.universe.trajectory[t]
+            z_bbox = self.atomselection.universe.dimensions[2]
+            prot_dens = 0*prot_dens
+            
+            positions = self.atomselection.positions
+            for i in range(len(positions)):
+                z = positions[i,2]
+                sigma = self.radii[i]
+                # The plus or minus 3 sigma slightly under-represents the area, A = 0.9989759
+                if z < self.zmin + 3.0 * sigma:
+                    z += z_bbox
+                z_low = np.floor( (z - 3.0 * sigma - self.zmin) / self.zstep)
+                z_hi  = np.ceil( (z + 3.0 * sigma - self.zmin) / self.zstep)
+                for j in range(int(z_low), int(z_hi)):
+                    # The integral of each exponential is equal to sigma, compounding to make sigma^3, normalized in nrm by self.volume
+                    prot_dens[j] += (sigma**2.0)*np.exp(-0.5*(z - (self.zmin + self.zstep*j))**2.0/((sigma)**2.0)) / nrm
+                    
+            mean = sum([prot_dens[i]*(self.zmin + i*self.zstep) for i in range(len(prot_dens))])*self.zstep
+            second_moment = sum([prot_dens[i]*(self.zmin + i*self.zstep - mean)**2.0 for i in range(len(prot_dens))])*self.zstep
+            tracking_of_mean.append(mean)
+            tracking_of_second_moment.append(second_moment)
+            self.density_trajectory.append(np.array([i for i in prot_dens]))
+#         #-------- Comparison to Target --------#          
+#            if isComparison:
+#                temp_avg_dens = prot_dens / (sum(prot_dens)*self.zstep)
+#                sq_diff =sum((temp_avg_dens - np.array([i for i in target_profile.density] + [0.0 for i in range(len(temp_avg_dens) - len(target_profile.density))]))**2.0)
+#                self.sq_sum_diff_of_avg_dens.append(sq_diff)
+#                
+#                sq_diff =sum((temp_dens - np.array([i for i in target_profile.density] + [0.0 for i in range(len(temp_dens) - len(target_profile.density))]))**2.0)
+#                self.sq_sum_diff_of_inst_dens.append(sq_diff)
+#         #--------------------------------------#    
+        
+        self.density = sum(self.density_trajectory)/len(self.density_trajectory)
+        self.tracking_of_mean = tracking_of_mean
+        self.tracking_of_second_moment = tracking_of_second_moment
+        self.units = 'A'
+        
+        # Calculate the mean and width of the profile
+        self.mean = sum([ self.density[i]*(self.zmin + i*self.zstep) for i in range(len(self.density)) ])*self.zstep
+        second_moment = sum([ self.density[i]*(self.zmin + i*self.zstep - self.mean)**2.0 for i in range(len(self.density)) ])*self.zstep
+        self.second_moment = np.sqrt(second_moment)
+        
+    def import_simulation_density_from_atom_selection(self, atomselection = None, frames = None, reference_profile_from_configuration = None, units = 'A'):
+        if units != 'A':
+            raise Exception('Sorry, MDAnalysis uses Angstroms. Prepare your z-axis as appropriate and try again.')
+            return
+        self.units = units
+        
+        # Figure out what group of atoms is being calculated on.
+        if ( (not atomselection) and (not hasattr(self, 'atomselection')) ):
+            raise Exception("No atomselection provided in arguments or object.")
+        if (atomselection):
+            if not isinstance(atomselection, MDAnalysis.core.groups.AtomGroup):
+                raise Exception("Was not provided with an appropriate atomselection of type 'MDAnalysis.core.groups.AtomGroup'.")
+            self.atomselection = atomselection
+            
+        # At what times are we looking?
+        if ((not frames) and (not hasattr(self, 'frames'))):
+            frames = input("Please provide an iterable containing which frames to look at in the trajectory: ")
+        if (frames):
+            self.frames = frames
+            
+        # Figure out the z-axis and radii
+        if (reference_profile_from_configuration):
+            if not isinstance(reference_profile_from_configuration, Protein_From_Configuration):
+                raise Exception("Reference profile is not a 'Protein_From_Configuration' object.")
+            if ((not hasattr(reference_profile_from_configuration, 'atom_groups'))
+            or (not hasattr(reference_profile_from_configuration, 'density'))
+            or (not hasattr(reference_profile_from_configuration, 'radii'))):
+                raise Exception("Some attributes were not found in your reference profile, did you import it correctly?")
+            self.reference_profile = reference_profile_from_configuration
+        if hasattr(self, 'reference_profile'):
+            self.atom_groups = self.reference_profile.atom_groups
+            if self.reference_profile.units == 'A':
+                length_scale = 1.0
+            elif self.reference_profile.units == 'nm':
+                length_scale = 10.0
+            else:
+                raise Exception("Unknown length scale in the reference profile.")
+            self.zmin = length_scale*self.reference_profile.zmin
+            self.zstep = length_scale*self.reference_profile.zstep
+            self.radii = length_scale*self.reference_profile.radii
+            self.volume = length_scale**3.0 * self.reference_profile.volume
+        else:
+            self.zmin = input("What is the start of the z-axis for the density (in Angstroms)? ")
+            self.zstep = input("What is the step size along the z-axis for the density (in Angstroms)? ")
+            tmp_1 = input("At what index do the atoms of interest start in the '.gro' file? ")
+            tmp_2 = input("At what index do the atoms of interest end in the '.gro' file? ")
+            self.atom_groups = np.array([[tmp_1, tmp_2]])
+            self.radii = np.ones(self.atom_groups[0,1] - self.atom_groups[0,0] + 1)
+            self.volume = np.sum(self.radii**3.0)
+        
+        # There are 10000 entries in the GROMACS z-axis array
+        self.zmax = self.zmin + 9999.0*self.zstep
+        
+        self.calculate_simulation_density()
+        
+
+
+    def import_simulation_density_from_trajectory(self, structure_file = None, trajectory_file = None, frames = None, reference_profile_from_configuration = None, units = 'A'):
+        if units != 'A':
+            raise Exception('Sorry, MDAnalysis uses Angstroms. Please convert post import using class function. Adjust z-axis as appropriate.')
+            return
+        self.units = units
+        
+        # Make sure we can find the trajectory
+        if ((not structure_file) and (not hasattr(self, 'structure_file'))):
+            structure_file = input("Please input the location of the structure file: ")
+        if (structure_file):
+            self.structure_file = structure_file
+            
+        if ((not trajectory_file) and (not hasattr(self, 'trajectory_file'))):
+            trajectory_file = input("Please input the location of the trajectory file: ")
+        if (trajectory_file):
+            self.trajectory_file = trajectory_file
+
+        # At what times are we looking?
+        if ((not frames) and (not hasattr(self, 'frames'))):
+            frames = input("Please provide an iterable containing which frames to look at in the trajectory: ")
+        if (frames):
+            self.frames = frames
+            
+        # Figure out the z-axis and radii
+        if (reference_profile_from_configuration):
+            # There are 10000 entries in the GROMACS z-axis array
+            self.zmax = self.zmin + 9999.0*self.zstep
+            if not isinstance(reference_profile_from_configuration, Protein_From_Configuration):
+                raise Exception("Reference profile is not a 'Protein_From_Configuration' object.")
+            if ((not hasattr(reference_profile_from_configuration, 'atom_groups'))
+            or (not hasattr(reference_profile_from_configuration, 'density'))
+            or (not hasattr(reference_profile_from_configuration, 'radii'))):
+                raise Exception("Some attributes were not found in your reference profile, did you import it correctly?")
+            self.reference_profile = reference_profile_from_configuration
+        if hasattr(self, 'reference_profile'):
+            self.atom_groups = self.reference_profile.atom_groups
+            if self.reference_profile.units == 'A':
+                length_scale = 1.0
+            elif self.reference_profile.units == 'nm':
+                length_scale = 10.0
+            else:
+                raise Exception("Unknown length scale in the reference profile.")
+            self.zmin = length_scale*self.reference_profile.zmin
+            self.zstep = length_scale*self.reference_profile.zstep
+            self.radii = length_scale*self.reference_profile.radii
+            self.volume = length_scale**3.0 * self.reference_profile.volume
+        else:
+            self.zmin = input("What is the start of the z-axis for the density (in Angstroms)? ")
+            self.zstep = input("What is the step size along the z-axis for the density (in Angstroms)? ")
+            tmp_1 = input("At what index do the atoms of interest start in the '.gro' file? ")
+            tmp_2 = input("At what index do the atoms of interest end in the '.gro' file? ")
+            self.atom_groups = np.array([[tmp_1, tmp_2]])
+            self.radii = np.ones(self.atom_groups[0,1] - self.atom_groups[0,0] + 1)
+            self.volume = np.sum(self.radii**3.0)
+        
+        # There are 10000 entries in the GROMACS z-axis array
+        self.zmax = self.zmin + 9999.0*self.zstep
+
+        u = MDAnalysis.Universe(self.structure_file, self.trajectory_file)
+        if len(self.atom_groups) > 1:
+            raise Exception('Sorry, this module does not yet support multiple molecules.')
+        # Strangely enough, 'bynum a:b' selects atoms by index in gro file a-1 to b-1
+        self.atomselection = u.select_atoms('bynum '+`self.atom_groups[0][0]`+':'+`self.atom_groups[0][1]`)
+        
+        self.calculate_simulation_density()
 
 ##############################
 ### Bilayer-Type Densities ###
