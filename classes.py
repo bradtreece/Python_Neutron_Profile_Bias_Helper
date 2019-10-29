@@ -339,8 +339,8 @@ class Protein_From_Configuration(Protein_Profile):
         
         # Calculate the mean and width of the profile
         self.mean = sum([ self.density[i]*(self.zmin + i*self.zstep) for i in range(len(self.density)) ])*self.zstep
-        second_moment = sum([ self.density[i]*(self.zmin + i*self.zstep - self.mean)**2.0 for i in range(len(self.density)) ])*self.zstep
-        self.second_moment = np.sqrt(second_moment)
+        sq_sum = sum([ self.density[i]*(self.zmin + i*self.zstep - self.mean)**2.0 for i in range(len(self.density)) ])*self.zstep
+        self.second_moment = np.sqrt(sq_sum)
         
         if ( np.shape(self.radii)[0] == 0 ):
             # If no radii for the atoms are supplied, set to 1A
@@ -378,21 +378,6 @@ class Protein_From_Simulation(Protein_Profile):
         self.units = units
         
     def calculate_simulation_density(self):
-#        #-------- Comparison to Target --------#
-#        if isComparison:
-#            if not isinstance(target_profile, Protein_Profile):
-#                raise ValueError(Protein_Profile)
-#            if not target_profile.isneutron:
-#                raise Exception("The target provided is not neutron")
-#            if target_profile.units != "A":
-#                raise Exception("Please convert target to Angstroms")
-#            if target_profile.zmin != self.zmin:
-#                raise Exception("Minimum values of densities to be compared do not match")
-#            if target_profile.zstep != self.zstep:
-#                raise Exception("The step size of densities to be compared do not match")
-#            self.sq_sum_diff_of_avg_dens = []
-#            self.sq_sum_diff_of_inst_dens = []
-#         #--------------------------------------#
         
         self.density_trajectory = []
         prot_dens = 0*np.arange(self.zmin, self.zmax + 0.5*self.zstep, self.zstep)
@@ -425,15 +410,6 @@ class Protein_From_Simulation(Protein_Profile):
             tracking_of_mean.append(mean)
             tracking_of_second_moment.append(second_moment)
             self.density_trajectory.append(np.array([i for i in prot_dens]))
-#         #-------- Comparison to Target --------#          
-#            if isComparison:
-#                temp_avg_dens = prot_dens / (sum(prot_dens)*self.zstep)
-#                sq_diff =sum((temp_avg_dens - np.array([i for i in target_profile.density] + [0.0 for i in range(len(temp_avg_dens) - len(target_profile.density))]))**2.0)
-#                self.sq_sum_diff_of_avg_dens.append(sq_diff)
-#                
-#                sq_diff =sum((temp_dens - np.array([i for i in target_profile.density] + [0.0 for i in range(len(temp_dens) - len(target_profile.density))]))**2.0)
-#                self.sq_sum_diff_of_inst_dens.append(sq_diff)
-#         #--------------------------------------#    
         
         self.density = sum(self.density_trajectory)/len(self.density_trajectory)
         self.tracking_of_mean = tracking_of_mean
@@ -556,7 +532,7 @@ class Protein_From_Simulation(Protein_Profile):
             self.atom_groups = np.array([[tmp_1, tmp_2]])
             self.radii = np.ones(self.atom_groups[0,1] - self.atom_groups[0,0] + 1)
             self.volume = np.sum(self.radii**3.0)
-        
+            
         # There are 10000 entries in the GROMACS z-axis array
         self.zmax = self.zmin + 9999.0*self.zstep
 
@@ -567,6 +543,23 @@ class Protein_From_Simulation(Protein_Profile):
         self.atomselection = u.select_atoms('bynum '+`self.atom_groups[0][0]`+':'+`self.atom_groups[0][1]`)
         
         self.calculate_simulation_density()
+        
+
+    def average_density_over_trajectory(self, frame_subset = None):
+        if (not hasattr(self, 'density_trajectory')):
+            raise Exception("The density trajectory does not exist for this object.")
+        elif len(self.density_trajectory) == 0:
+            raise Exception("The density trajectory exists but has no entries.")
+        
+        if not frame_subset:
+            print("No subset of the frames specified, using all the frames.")
+            frame_subset = self.frames
+        
+        self.density = sum([self.density_trajectory[i] for i in frame_subset]) / len(frame_subset)
+        self.mean = sum([ self.density[i]*(self.zmin + i*self.zstep) for i in range(len(self.density)) ])*self.zstep
+        sq_sum = sum([ self.density[i]*(self.zmin + i*self.zstep - self.mean)**2.0 for i in range(len(self.density)) ])*self.zstep
+        self.second_moment = np.sqrt(sq_sum)
+        
 
 ##############################
 ### Bilayer-Type Densities ###
