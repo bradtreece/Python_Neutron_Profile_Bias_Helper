@@ -8,7 +8,60 @@ Created on Thu May 10 10:28:12 2018
 
 from classes import Bilayer_Profile
 from classes import Protein_Profile
+from classes import Protein_From_Configuration
+from classes import Protein_From_Simulation
 import numpy as np
+
+class Profile_Comparison:
+    def __init__(self, nframes):
+        if not isinstance(nframes, int):
+            raise Exception("Need an integral number of frames.")
+        self.rmsd_inst = -1.0*np.ones(nframes)
+        self.rmsd_avg = -1.0*np.ones(nframes)
+
+def compare_simulation_to_reference(Simulation_Profile, Reference_Profile=None, Subset_Of_Frames_To_Look_At=None):
+    if ((not Reference_Profile) and (not hasattr(Simulation_Profile, 'reference_profile'))):
+        raise Exception("No reference provided and none found in the simulation profile.")
+    if not isinstance(Reference_Profile, Protein_From_Simulation):
+        raise Exception("Simulation not of class 'Protein_From_Simulation'")
+    if not isinstance(Reference_Profile, Protein_From_Configuration):
+        raise Exception("Only reference profiles from configuration files supported.")
+    
+    if not Subset_Of_Frames_To_Look_At:
+        Subset_Of_Frames_To_Look_At = range(len(Simulation_Profile.frames))
+    
+    if Reference_Profile:
+        Ref = Reference_Profile
+    else:
+        Ref = Simulation_Profile.reference_profile
+    
+    # Make the z-axis match
+    if ((Ref.zmin != Simulation_Profile.zmin)
+    or (Ref.zstep != Simulation_Profile.zstep)
+    or (Ref.zmax != Simulation_Profile.zmax)):
+        target_density = 0*np.arange(Simulation_Profile.zmin, Simulation_Profile.zmax+1e-6, Simulation_Profile.zstep)
+        for i in range(len(target_density)):
+            z = Simulation_Profile.zmin + i*Simulation_Profile.zstep
+            j = int(np.floor((z - Ref.zmin) / Ref.zstep))
+            if ((j < 0) or (j > len(Ref.density) - 2)):
+                target_density[i] = 0.0
+            else:
+                zed = Ref.zmin + j*Ref.zstep
+                delta_z = z - zed
+                delta_rho = Ref.density[j+1] - Ref.density[j]
+                target_density[i] = (delta_rho/Ref.zstep)*(delta_z) + Ref.density[j]
+        
+    Comparison = Profile_Comparison(len(Subset_Of_Frames_To_Look_At))
+    
+    avg_dens = 0*Simulation_Profile.density
+    for i in range(len(Subset_Of_Frames_To_Look_At)):
+        t = Subset_Of_Frames_To_Look_At[i]
+        inst_dens = Simulation_Profile.density_trajectory[t]
+        avg_dens = (i*avg_dens + inst_dens)/(i+1)
+        
+        Comparison.rmsd_inst[i] = np.sqrt(np.sum((target_density - inst_dens)**2.0))
+        Comparison.rmsd_avg[i] = np.sqrt(np.sum((target_density - avg_dens)**2.0))
+    return Comparison
 
 def write_configuration_file(Profile, filename, weight_func = None, existing_weights = False):
     if not isinstance(Profile, Protein_Profile):

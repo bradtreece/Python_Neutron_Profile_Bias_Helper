@@ -274,6 +274,8 @@ class Protein_From_Configuration(Protein_Profile):
         self.isneutron = True
         self.filename = configuration_file
         self.units = units
+        if self.filename:
+            self.import_configuration_file()
   ################################
     def import_configuration_file(self, filename = None, units = 'nm'):
         if ((not filename) and (not self.filename)):
@@ -377,6 +379,45 @@ class Protein_From_Simulation(Protein_Profile):
             self.reference_profile = reference_profile_from_configuration
         self.units = units
         
+    def __verify_frames(self, frames):
+        if ((not frames) and (not hasattr(self, 'frames'))):
+            frames = input("Please provide an iterable containing which frames to look at in the trajectory: ")
+        if (frames):
+            self.frames = frames
+            
+    def __verify_zaxis_and_radii(self, reference_profile):
+        if (reference_profile):
+            if not isinstance(reference_profile, Protein_From_Configuration):
+                raise Exception("Reference profile is not a 'Protein_From_Configuration' object.")
+            if ((not hasattr(reference_profile, 'atom_groups'))
+            or (not hasattr(reference_profile, 'density'))
+            or (not hasattr(reference_profile, 'radii'))):
+                raise Exception("Some attributes were not found in your reference profile, did you import it correctly?")
+            self.reference_profile = reference_profile
+        if hasattr(self, 'reference_profile'):
+            self.atom_groups = self.reference_profile.atom_groups
+            if self.reference_profile.units == 'A':
+                length_scale = 1.0
+            elif self.reference_profile.units == 'nm':
+                length_scale = 10.0
+            else:
+                raise Exception("Unknown length scale in the reference profile.")
+            self.zmin = length_scale*self.reference_profile.zmin
+            self.zstep = length_scale*self.reference_profile.zstep
+            self.radii = length_scale*self.reference_profile.radii
+            self.volume = length_scale**3.0 * self.reference_profile.volume
+        else:
+            self.zmin = input("What is the start of the z-axis for the density (in Angstroms)? ")
+            self.zstep = input("What is the step size along the z-axis for the density (in Angstroms)? ")
+            tmp_1 = input("At what index do the atoms of interest start in the '.gro' file? ")
+            tmp_2 = input("At what index do the atoms of interest end in the '.gro' file? ")
+            self.atom_groups = np.array([[tmp_1, tmp_2]])
+            self.radii = np.ones(self.atom_groups[0,1] - self.atom_groups[0,0] + 1)
+            self.volume = np.sum(self.radii**3.0)
+        
+        # There are 10000 entries in the GROMACS z-axis array
+        self.zmax = self.zmin + 9999.0*self.zstep
+        
     def calculate_simulation_density(self):
         
         self.density_trajectory = []
@@ -436,47 +477,12 @@ class Protein_From_Simulation(Protein_Profile):
             self.atomselection = atomselection
             
         # At what times are we looking?
-        if ((not frames) and (not hasattr(self, 'frames'))):
-            frames = input("Please provide an iterable containing which frames to look at in the trajectory: ")
-        if (frames):
-            self.frames = frames
+        self.__verify_frames(frames)
             
         # Figure out the z-axis and radii
-        if (reference_profile_from_configuration):
-            if not isinstance(reference_profile_from_configuration, Protein_From_Configuration):
-                raise Exception("Reference profile is not a 'Protein_From_Configuration' object.")
-            if ((not hasattr(reference_profile_from_configuration, 'atom_groups'))
-            or (not hasattr(reference_profile_from_configuration, 'density'))
-            or (not hasattr(reference_profile_from_configuration, 'radii'))):
-                raise Exception("Some attributes were not found in your reference profile, did you import it correctly?")
-            self.reference_profile = reference_profile_from_configuration
-        if hasattr(self, 'reference_profile'):
-            self.atom_groups = self.reference_profile.atom_groups
-            if self.reference_profile.units == 'A':
-                length_scale = 1.0
-            elif self.reference_profile.units == 'nm':
-                length_scale = 10.0
-            else:
-                raise Exception("Unknown length scale in the reference profile.")
-            self.zmin = length_scale*self.reference_profile.zmin
-            self.zstep = length_scale*self.reference_profile.zstep
-            self.radii = length_scale*self.reference_profile.radii
-            self.volume = length_scale**3.0 * self.reference_profile.volume
-        else:
-            self.zmin = input("What is the start of the z-axis for the density (in Angstroms)? ")
-            self.zstep = input("What is the step size along the z-axis for the density (in Angstroms)? ")
-            tmp_1 = input("At what index do the atoms of interest start in the '.gro' file? ")
-            tmp_2 = input("At what index do the atoms of interest end in the '.gro' file? ")
-            self.atom_groups = np.array([[tmp_1, tmp_2]])
-            self.radii = np.ones(self.atom_groups[0,1] - self.atom_groups[0,0] + 1)
-            self.volume = np.sum(self.radii**3.0)
-        
-        # There are 10000 entries in the GROMACS z-axis array
-        self.zmax = self.zmin + 9999.0*self.zstep
+        self.__verify_zaxis_and_radii(reference_profile_from_configuration)
         
         self.calculate_simulation_density()
-        
-
 
     def import_simulation_density_from_trajectory(self, structure_file = None, trajectory_file = None, frames = None, reference_profile_from_configuration = None, units = 'A'):
         if units != 'A':
@@ -496,45 +502,10 @@ class Protein_From_Simulation(Protein_Profile):
             self.trajectory_file = trajectory_file
 
         # At what times are we looking?
-        if ((not frames) and (not hasattr(self, 'frames'))):
-            frames = input("Please provide an iterable containing which frames to look at in the trajectory: ")
-        if (frames):
-            self.frames = frames
+        self.__verify_frames(frames)
             
         # Figure out the z-axis and radii
-        if (reference_profile_from_configuration):
-            # There are 10000 entries in the GROMACS z-axis array
-            self.zmax = self.zmin + 9999.0*self.zstep
-            if not isinstance(reference_profile_from_configuration, Protein_From_Configuration):
-                raise Exception("Reference profile is not a 'Protein_From_Configuration' object.")
-            if ((not hasattr(reference_profile_from_configuration, 'atom_groups'))
-            or (not hasattr(reference_profile_from_configuration, 'density'))
-            or (not hasattr(reference_profile_from_configuration, 'radii'))):
-                raise Exception("Some attributes were not found in your reference profile, did you import it correctly?")
-            self.reference_profile = reference_profile_from_configuration
-        if hasattr(self, 'reference_profile'):
-            self.atom_groups = self.reference_profile.atom_groups
-            if self.reference_profile.units == 'A':
-                length_scale = 1.0
-            elif self.reference_profile.units == 'nm':
-                length_scale = 10.0
-            else:
-                raise Exception("Unknown length scale in the reference profile.")
-            self.zmin = length_scale*self.reference_profile.zmin
-            self.zstep = length_scale*self.reference_profile.zstep
-            self.radii = length_scale*self.reference_profile.radii
-            self.volume = length_scale**3.0 * self.reference_profile.volume
-        else:
-            self.zmin = input("What is the start of the z-axis for the density (in Angstroms)? ")
-            self.zstep = input("What is the step size along the z-axis for the density (in Angstroms)? ")
-            tmp_1 = input("At what index do the atoms of interest start in the '.gro' file? ")
-            tmp_2 = input("At what index do the atoms of interest end in the '.gro' file? ")
-            self.atom_groups = np.array([[tmp_1, tmp_2]])
-            self.radii = np.ones(self.atom_groups[0,1] - self.atom_groups[0,0] + 1)
-            self.volume = np.sum(self.radii**3.0)
-            
-        # There are 10000 entries in the GROMACS z-axis array
-        self.zmax = self.zmin + 9999.0*self.zstep
+        self.__verify_zaxis_and_radii(reference_profile_from_configuration)
 
         u = MDAnalysis.Universe(self.structure_file, self.trajectory_file)
         if len(self.atom_groups) > 1:
@@ -553,7 +524,7 @@ class Protein_From_Simulation(Protein_Profile):
         
         if not frame_subset:
             print("No subset of the frames specified, using all the frames.")
-            frame_subset = self.frames
+            frame_subset = range(len(self.frames))
         
         self.density = sum([self.density_trajectory[i] for i in frame_subset]) / len(frame_subset)
         self.mean = sum([ self.density[i]*(self.zmin + i*self.zstep) for i in range(len(self.density)) ])*self.zstep
