@@ -22,7 +22,7 @@ class Profile_Comparison:
 def compare_simulation_to_reference(Simulation_Profile, Reference_Profile=None, Subset_Of_Frames_To_Look_At=None):
     if ((not Reference_Profile) and (not hasattr(Simulation_Profile, 'reference_profile'))):
         raise Exception("No reference provided and none found in the simulation profile.")
-    if not isinstance(Reference_Profile, Protein_From_Simulation):
+    if not isinstance(Simulation_Profile, Protein_From_Simulation):
         raise Exception("Simulation not of class 'Protein_From_Simulation'")
     if not isinstance(Reference_Profile, Protein_From_Configuration):
         raise Exception("Only reference profiles from configuration files supported.")
