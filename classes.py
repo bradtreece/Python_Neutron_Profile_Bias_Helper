@@ -525,6 +525,7 @@ class Protein_From_Simulation(Protein_Profile):
         if not frame_subset:
             print("No subset of the frames specified, using all the frames.")
             frame_subset = range(len(self.frames))
+        self.frame_subset = frame_subset
         
         self.density = sum([self.density_trajectory[i] for i in frame_subset]) / len(frame_subset)
         self.mean = sum([ self.density[i]*(self.zmin + i*self.zstep) for i in range(len(self.density)) ])*self.zstep
