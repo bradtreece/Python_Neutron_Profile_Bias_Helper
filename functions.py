@@ -63,19 +63,22 @@ def compare_simulation_to_reference(Simulation_Profile, Reference_Profile=None, 
         Comparison.rmsd_avg[i] = np.sqrt(np.sum((target_density - avg_dens)**2.0))
     return Comparison
 
-def write_configuration_file(Profile, filename, weight_func = None, existing_weights = False):
+def write_configuration_file(Profile, filename, use_radii = False):
+#### Weighted potential not supported yet
+#def write_configuration_file(Profile, filename, weight_func = None, existing_weights = False):
     if not isinstance(Profile, Protein_Profile):
         raise ValueError(Protein_Profile)
     if not Profile.isneutron:
         raise Exception('The profile provided is not a neutron profile, please provide a different profile.')
-    if not callable(weight_func):
-        def weight_func(width, density):
-            if density != 0.0:
-                return np.exp(-1.0*width/density)
-            else:
-                return 1.0
-    if (not hasattr(Profile, 'msigma')) and (not existing_weights):
-        raise Exception('The profile provided does not have confidence intervals, please add them or set them to an array of zeros the size of the density.')
+#### Weights not supported yet
+#    if not callable(weight_func):
+#        def weight_func(width, density):
+#            if density != 0.0:
+#                return np.exp(-1.0*width/density)
+#            else:
+#                return 1.0
+#    if (not hasattr(Profile, 'msigma')) and (not existing_weights):
+#        raise Exception('The profile provided does not have confidence intervals, please add them or set them to an array of zeros the size of the density.')
     if Profile.units != 'nm':
         raise Exception('The given units are '+Profile.units+', please convert to nm.')
         return
@@ -110,22 +113,28 @@ def write_configuration_file(Profile, filename, weight_func = None, existing_wei
     for i in Profile.density:
         f.write('\t'+`i`)
     f.write('\n')
-    
-    if existing_weights:
-        if not hasattr(Profile, 'weights'):
-            raise Exception('There were no weights supplied with the profile but I was told the weights existed.')
-        f.write('w')
-        for i in Profile.weights:
+
+###### Weights for potential, not supported yet
+#    if existing_weights:
+#        if not hasattr(Profile, 'weights'):
+#            raise Exception('There were no weights supplied with the profile but I was told the weights existed.')
+#        f.write('w')
+#        for i in Profile.weights:
+#            f.write('\t'+`i`)
+#        f.write('\n')
+#    else:
+#        tmp = Profile.density
+#        tmp2 = 0.5*(Profile.psigma - Profile.msigma)
+#        f.write('w')
+#        for i in range(len(tmp)):
+#            w = weight_func(tmp2[i], tmp[i])
+#            f.write('\t'+`w`)
+#        f.write('\n')
+    if use_radii:
+        f.write('r')
+        for i in Profile.radii:
             f.write('\t'+`i`)
-        f.write('\n')
-    else:
-        tmp = Profile.density
-        tmp2 = 0.5*(Profile.psigma - Profile.msigma)
-        f.write('w')
-        for i in range(len(tmp)):
-            w = weight_func(tmp2[i], tmp[i])
-            f.write('\t'+`w`)
-        f.write('\n')
+            f.write('\n')
     
     f.close()
     
