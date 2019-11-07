@@ -203,7 +203,7 @@ class Protein_From_PXP(Density_Profile):
         if PXP_File:
             self.import_pxp_file(PXP_File, data_column_title = data_column_title,
                                  msigma_column_title = msigma_column_title,
-                                 psigma_columnt_title = psigma_column_title,
+                                 psigma_column_title = psigma_column_title,
                                  units = units)
         
     def import_pxp_file(self, filename = None, data_column_title = None,
