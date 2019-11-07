@@ -6,10 +6,13 @@ Created on Thu May 10 10:28:12 2018
 @author: btreece
 """
 
-from classes import Bilayer_Profile
-from classes import Density_Profile
+#from classes import Density_Profile
+from classes import Protein_From_PXP
 from classes import Protein_From_Configuration
 from classes import Protein_From_Simulation
+#from classes import Bilayer_Profile
+from classes import Bilayer_From_PXP
+from classes import Bilayer_From_Simulation
 #from classes import *
 import numpy as np
 
@@ -67,10 +70,8 @@ def compare_simulation_to_reference(Simulation_Profile, Reference_Profile=None, 
 def write_configuration_file(Profile, filename, use_radii = False):
 #### Weighted potential not supported yet
 #def write_configuration_file(Profile, filename, weight_func = None, existing_weights = False):
-    if not isinstance(Profile, Density_Profile):
-        raise ValueError(Density_Profile)
-    if not Profile.isneutron:
-        raise Exception('The profile provided is not a neutron profile, please provide a different profile.')
+    if not isinstance(Profile, Protein_From_PXP):
+        raise ValueError(Protein_From_PXP)
 #### Weights not supported yet
 #    if not callable(weight_func):
 #        def weight_func(width, density):
@@ -139,29 +140,22 @@ def write_configuration_file(Profile, filename, use_radii = False):
     
     f.close()
     
-def prepare_neutron_profile_for_configuration(protein_profile, Bilayer_Profile_Neutron, Bilayer_Profile_MD):
-    if not isinstance(protein_profile, Density_Profile):
-        raise ValueError(Density_Profile)
-    if not isinstance(Bilayer_Profile_MD, Bilayer_Profile):
-        raise ValueError(Bilayer_Profile)
-    if not isinstance(Bilayer_Profile_Neutron, Bilayer_Profile):
-        raise ValueError(Bilayer_Profile)
+def prepare_neutron_profile_for_configuration(Protein_Profile, Bilayer_Profile_Neutron, Bilayer_Profile_MD):
+    if not isinstance(Protein_Profile, Protein_From_PXP):
+        raise ValueError(Protein_From_PXP)
+    if not isinstance(Bilayer_Profile_MD, Bilayer_From_Simulation):
+        raise ValueError(Bilayer_From_Simulation)
+    if not isinstance(Bilayer_Profile_Neutron, Bilayer_From_PXP):
+        raise ValueError(Bilayer_From_PXP)
         
-    if not protein_profile.isneutron:
-        raise Exception('The protein profile provided is not a neutron profile, please provide a different profile.')
-    if not Bilayer_Profile_Neutron.isneutron:
-        raise Exception('The neutron bilayer profile provided is not a neutron profile, please provide a different profile.')
-    if Bilayer_Profile_MD.isneutron:
-        raise Exception('The MD bilayer profile provided is a neutron profile, please provide a different profile.')
-        
-    if (not hasattr(protein_profile, 'msigma')) and (not hasattr(protein_profile, 'weights')):
-        raise Exception('The profile provided does not have confidence intervals, nor does it have weights. Please add one of them or set the weights to an array of ones the size of the density.')
+#    if (not hasattr(Protein_Profile, 'msigma')) and (not hasattr(Protein_Profile, 'weights')):
+#        raise Exception('The profile provided does not have confidence intervals, nor does it have weights. Please add one of them or set the weights to an array of ones the size of the density.')
 
-    if protein_profile.units == 'A':
-        protein_profile.convert_units(0.1, 'nm')
+    if Protein_Profile.units == 'A':
+        Protein_Profile.convert_units(0.1, 'nm')
         print('Converted your protein profile from Angstroms to nm (not nautical miles)')
-    elif protein_profile.units != 'nm':
-        raise Exception('The given units of the protein profile are '+protein_profile.units+', please convert to nm.')
+    elif Protein_Profile.units != 'nm':
+        raise Exception('The given units of the protein profile are '+Protein_Profile.units+', please convert to nm.')
     if Bilayer_Profile_MD.units == 'A':
         Bilayer_Profile_MD.convert_units(0.1, 'nm')
         print('Converted your MD bilayer profile from Angstroms to nm')
@@ -174,22 +168,22 @@ def prepare_neutron_profile_for_configuration(protein_profile, Bilayer_Profile_N
         raise Exception('The given units of the neutron bilayer profile are '+Bilayer_Profile_Neutron.units+', please convert to nm.')
     
     # Normalize the density provided
-    norm = sum(protein_profile.density)*protein_profile.zstep
+    norm = sum(Protein_Profile.density)*Protein_Profile.zstep
     if norm != 1.0:
         print('\n\n\nThe profile has area = '+`norm`+""", changing that to be 1.\n    You're welcome.\n\n\n""")
-        protein_profile.density = protein_profile.density / norm
-        if hasattr(protein_profile, 'msigma'):
-            protein_profile.msigma = protein_profile.msigma / norm
-            protein_profile.psigma = protein_profile.psigma / norm
+        Protein_Profile.density = Protein_Profile.density / norm
+        if hasattr(Protein_Profile, 'msigma'):
+            Protein_Profile.msigma = Protein_Profile.msigma / norm
+            Protein_Profile.psigma = Protein_Profile.psigma / norm
     
     # Apply the necessary offset
     offset = Bilayer_Profile_MD.bilayer_center - Bilayer_Profile_Neutron.bilayer_center
-    protein_profile.mean = protein_profile.mean + offset
-    protein_profile.zmin = protein_profile.zmin + offset
-    protein_profile.zmax = protein_profile.zmax + offset
+    Protein_Profile.mean = Protein_Profile.mean + offset
+    Protein_Profile.zmin = Protein_Profile.zmin + offset
+    Protein_Profile.zmax = Protein_Profile.zmax + offset
     
     # Truncate the density
-    dens_temp = np.array([i for i in protein_profile.density])
+    dens_temp = np.array([i for i in Protein_Profile.density])
     index_lo = min(np.nonzero(dens_temp)[0]) - 10
     index_hi = max(np.nonzero(dens_temp)[0]) + 11
     if index_lo < 0:
@@ -197,13 +191,13 @@ def prepare_neutron_profile_for_configuration(protein_profile, Bilayer_Profile_N
     if index_hi > len(dens_temp):
         index_hi = dens_temp
     
-    protein_profile.zmin = protein_profile.zmin + index_lo*protein_profile.zstep
-    protein_profile.zmax = protein_profile.zmax - index_hi*protein_profile.zstep
+    Protein_Profile.zmin = Protein_Profile.zmin + index_lo*Protein_Profile.zstep
+    Protein_Profile.zmax = Protein_Profile.zmax - index_hi*Protein_Profile.zstep
     
-    protein_profile.density = protein_profile.density[index_lo:index_hi]
-    if hasattr(protein_profile, 'msigma'):
-        protein_profile.msigma = protein_profile.msigma[index_lo:index_hi]
-        protein_profile.psigma = protein_profile.psigma[index_lo:index_hi]
-    if hasattr(protein_profile, 'weights'):
-        protein_profile.weights = protein_profile.weights[index_lo:index_hi]
+    Protein_Profile.density = Protein_Profile.density[index_lo:index_hi]
+    if hasattr(Protein_Profile, 'msigma'):
+        Protein_Profile.msigma = Protein_Profile.msigma[index_lo:index_hi]
+        Protein_Profile.psigma = Protein_Profile.psigma[index_lo:index_hi]
+    if hasattr(Protein_Profile, 'weights'):
+        Protein_Profile.weights = Protein_Profile.weights[index_lo:index_hi]
     
