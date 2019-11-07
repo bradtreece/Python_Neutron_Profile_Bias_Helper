@@ -160,7 +160,7 @@ class Radii:
 ### Protein-Type Densities ###
 ##############################
 
-class Protein_Profile:
+class Density_Profile:
     def __init__(self, isneutron = False):
         self.isneutron = isneutron
 
@@ -168,7 +168,9 @@ class Protein_Profile:
         """length_scale_factor is the multiplicative factor that takes the old length to the new one."""
         self.units = new_units
         
-        for i in ['zmin', 'zmax', 'zstep', 'mean', 'second_moment', 'tracking_of_mean', 'radii']:
+        for i in ['zmin', 'zmax', 'zstep', 'mean', 'second_moment',
+                  'tracking_of_mean', 'radii', 'bilayer_center', 'protein_norm',
+                  'total_density_norm']:
             if hasattr(self, i):
                 setattr(self, i, getattr(self, i)*length_scale_factor)
         
@@ -181,12 +183,14 @@ class Protein_Profile:
         if hasattr(self, 'potential_scaling'):
             self.potential_scaling = np.array([self.potential_scaling[0]*length_scale_factor, self.potential_scaling[1]/length_scale_factor**2.0])
 
-
+        if hasattr(self, 'density_dictionary'):
+            for key in self.density_dictionary.keys():
+                self.density_dictionary[key] = self.density_dictionary[key]/length_scale_factor
 
 ##################################
 # Profile From Neutron Data File #
 ##################################
-class Protein_From_PXP(Protein_Profile):
+class Protein_From_PXP(Density_Profile):
     def __init__(self, PXP_File = None, data_column_title = 'median_area',
                  msigma_column_title = 'msigma', psigma_column_title = 'psigma',
                  units = 'A'):
@@ -269,7 +273,7 @@ class Protein_From_PXP(Protein_Profile):
 ##############################################################
 # Profile From GROMACS Configuration File (Used For Biasing) #
 ##############################################################
-class Protein_From_Configuration(Protein_Profile):
+class Protein_From_Configuration(Density_Profile):
     def __init__(self, configuration_file = None, units = 'nm'):
         self.isneutron = True
         self.filename = configuration_file
@@ -358,7 +362,7 @@ class Protein_From_Configuration(Protein_Profile):
 ######################################
 # Profile From Simulation Trajectory #
 #######################################
-class Protein_From_Simulation(Protein_Profile):
+class Protein_From_Simulation(Density_Profile):
     def __init__(self, structure_file = None, trajectory_file = None, atomselection = None, reference_profile_from_configuration = None, units = 'A'):
         self.isneutron = False
         if (structure_file):
@@ -536,10 +540,9 @@ class Protein_From_Simulation(Protein_Profile):
 ##############################
 ### Bilayer-Type Densities ###
 ##############################
-
-class Bilayer_Profile:
-    def __init__(self, isneutron = False):
-        self.isneutron = isneutron
+class Bilayer_Profile(Density_Profile):
+#class Bilayer_Profile:
+    def __init__(self):
         POPC_RANGES={'headgroups':range(0,24),'tails':range(24,130),'methyls':range(130,134)}
         POPG_RANGES={'headgroups':range(0,17),'tails':range(17,123),'methyls':range(123,127)}
         DOPC_RANGES={'headgroups':range(0,24),'tails':range(24,87)+range(91,134),'methyls':range(87,91)+range(134,138)}
@@ -547,22 +550,38 @@ class Bilayer_Profile:
         CHOL_RANGES={'tails':range(0,74)}
         self.lipid_groups_dictionary = {'POPC':POPC_RANGES,'POPG':POPG_RANGES,'DOPC':DOPC_RANGES,'DOPS':DOPS_RANGES,'CHOL':CHOL_RANGES}
     
-
-
-    def import_pxp_file(self, filename, protein_column_title='median_area', group_dictionary = {}, units='A', create_group_dictionary_interactively = False):
-        """ group_dictionary is a set of keys correspond to lists; each list contains the column headers in the pxp file for that group."""
-        
-        if self.isneutron == False:
-            print('\n\n\nThis has just become a neutron density profile, use it as such ;)\n\n\n')
+class Bilayer_From_PXP(Bilayer_Profile):
+    def __init__(self, filename = None, protein_column_title='median_area',
+                 group_dictionary = {}, units='A',
+                 create_group_dictionary_interactively = False):
+        Bilayer_Profile.__init__(self)
         self.isneutron = True
         self.filename = filename
+        self.protein_column_title = protein_column_title
+        self.group_dictionary = group_dictionary
+        self.units = units
+        if filename:
+            self.import_pxp_file(create_group_dictionary_interactively=
+                                     create_group_dictionary_interactively)
+
+    def import_pxp_file(self, filename = None, protein_column_title = None,
+                        group_dictionary = None, units = None,
+                        create_group_dictionary_interactively = False):
+        """ group_dictionary is a set of keys correspond to lists;
+        each list contains the column headers in the pxp file for that group."""
+        ##########        
+        if filename:
+            self.filename = filename
+        elif not self.filename:
+            raise Exception("No file name provided or set in attributes of object.")
         
         f = igor.load(self.filename)
         self.zmin = f.zaxis.data[0]
         self.zmax = f.zaxis.data[-1]
         self.zstep = f.zaxis.data[1] - f.zaxis.data[0]
-        
+        ##########
         if create_group_dictionary_interactively:
+            group_dictionary = {}
             toplevel = True
             while toplevel:
                 print("""Interactive Group Definition:\n1. Add A Group To The Dictionary\n2. List Columns In The File\n3. Exit""")
@@ -595,23 +614,27 @@ class Bilayer_Profile:
                     toplevel = False
                 else:
                     print("\nNot One Of The Options, Try Again\n")
+        if group_dictionary:
+            self.group_dictionary = group_dictionary
         
-        if len(group_dictionary.keys()) == 0:
-            group_dictionary = {'headgroups':['headgroup1','headgroup1_2','headgroup1_3','headgroup2','headgroup2_2','headgroup2_3'],
+        if len(self.group_dictionary.keys()) == 0:
+            self.group_dictionary = {'headgroups':['headgroup1','headgroup1_2','headgroup1_3','headgroup2','headgroup2_2','headgroup2_3'],
                                 'tethers':['bME','tetherg','tether'],
                                 'tails':['lipid1','methyl1','lipid2','methyl2'],
                                 'substrate':['substrate']}
-        if group_dictionary.keys().count('tails') != 1:
+        if self.group_dictionary.keys().count('tails') != 1:
             raise Exception("""A group named 'tails' (tail distribution) must be included for purposes of centering the bilayer.""")
             return
-        
+        ##########
         # Get the protein density
+        if protein_column_title:
+            self.protein_column_title = protein_column_title
         try:
-            protein_density = np.array(eval('f.'+protein_column_title+'.data'))
+            protein_density = np.array(eval('f.'+self.protein_column_title+'.data'))
         except:
-            raise Exception(protein_column_title+' was not found in '+self.filename+'. I do need it for relative normalizing.')
+            raise Exception(self.protein_column_title+' was not found in '+self.filename+'. I do need it for relative normalizing.')
             return
-        
+        ##########
         # Check the z-axis variables and the array lengths
         if round( (self.zmax - self.zmin)/self.zstep, 8)%1.0 != 0.0:
             raise Exception('zmin and zmax are not separated by an integral multiple of zsteps, problem with the file?')
@@ -619,31 +642,40 @@ class Bilayer_Profile:
         elif round( ( ( (self.zmax - self.zmin) / self.zstep ) + 1 ), 8) != np.shape(protein_density)[0]:
             raise Exception('The number of points in the first dimension of the density array does not match the z-dimensions supplied.\n    This is a weird error for neutron data.')
             return
-
-        # Units    
-        self.units = units
-        print('\n\n\nUnits are assumed to be '+self.units+""". Please convert the units if this is incorrect.\n\n\n""")
-        
+        ##########
+        # Units
+        if units:
+            self.units = units
+        ##########
         # Setting the dictionary of various densities in the file
         temp_dict = {}
-        for i in group_dictionary.keys():
+        for i in self.group_dictionary.keys():
             temp_dict.update({i:0*protein_density})
-            for j in group_dictionary[i]:
+            for j in self.group_dictionary[i]:
                 try:
                     temp_dict.update( { i:temp_dict[i] + getattr( getattr( f, j), 'data') } )
                 except:
                     raise Exception(j+' was not found in '+self.filename+'. Please check your dictionary of component groups for the correct column headings.')
                     return
         self.density_dictionary = temp_dict
-
+        ##########
         # Get the norm of the protein density (this is used for relative normalizing in plots)
         self.protein_norm = sum(protein_density)*self.zstep
-        
+        ##########        
         # Calculate the center of the lipidic distribution
         norm = sum(self.density_dictionary['tails'])*self.zstep
         self.bilayer_center = sum([ self.density_dictionary['tails'][i]*(self.zmin + i*self.zstep) for i in range(len(self.density_dictionary['tails'])) ])*self.zstep / norm
 
-
+class Bilayer_From_Simulation(Bilayer_Profile):
+    def __init__(self, structure_file = None, trajectory_file = None, universe = None, frames = None,
+                 lipid_resname_dictionary = {'CHOL':'CHL1', 'DOPC':'DOPC', 'DOPS':'DOPS'}):
+        Bilayer_Profile.__init__(self)
+        self.isneutron = False
+        self.structure_file = structure_file
+        self.trajectory_file = trajectory_file
+        self.universe = universe
+        self.frames = frames
+        self.resname_dict = lipid_resname_dictionary
 
     def calculate_simulation_density(self, bilayer_selection_dictionary, frames):
         
@@ -669,37 +701,55 @@ class Bilayer_Profile:
         
         self.density_dictionary = temp_dict
         
-        # Calculate the norm of all the densities together (nothing is normalized for number of atoms)
+        # Calculate the norm of all the densities together (nothing has been normalized accounting for number of atoms)
         norm = 0.0
         for key in key_list:
             norm += sum(temp_dict[key])*self.zstep
-        #
-        self.bilayer_center = sum([sum([temp_dict[key][i]*z_array[i] for key in key_list]) for i in range(len(z_array))])*self.zstep / norm
+        self.total_density_norm = norm
+        self.bilayer_center = sum([sum([temp_dict[key][i]*z_array[i] for key in key_list]) for i in range(len(z_array))])*self.zstep / self.total_density_norm
         
+        self.bilayer_atomgroup_dictionary = bilayer_selection_dictionary
         self.frames = frames
         self.units = 'A'
         
         
         
-    def import_simulation_density_from_universe(self, universe, frames, lipid_resname_dictionary = {'CHOL':'CHL1', 'DOPC':'DOPC'}):
+    def import_simulation_density_from_universe(self, universe = None, frames = None, lipid_resname_dictionary = None):
         """ lipid_resname_dictionary gives how each component of the bilayer is labeled in the simulation - i.e. {'DOPC':'DOPC, 'CHOL':'CHL1'} """
-
-        z_bbox = universe.dimensions[2]
-        self.zmin = np.min(universe.atoms.positions[:,2]) - 0.1*z_bbox
-        self.zmax = np.max(universe.atoms.positions[:,2]) + 0.1*z_bbox
+        ##########
+        if universe:
+            self.universe = universe
+        elif not self.universe:
+            raise Exception("No universe supplied to method or as an attribute to object.")
+        self.structure_file = self.universe.filename
+        self.trajectory_file = self.universe.trajectory.filename
+        ##########
+        if frames:
+            self.frames = frames
+        elif not self.frames:
+            raise Exception("No list of frames was supplied to method or as an attribute to object.")
+        ##########
+        if lipid_resname_dictionary:
+            self.resname_dict = lipid_resname_dictionary
+        ##########            
+        z_bbox = self.universe.dimensions[2]
+        self.zmin = np.min(self.universe.atoms.positions[:,2]) - 0.1*z_bbox
+        self.zmax = np.max(self.universe.atoms.positions[:,2]) + 0.1*z_bbox
         self.zstep = (self.zmax - self.zmin) / 2500.
-        
+        ##########
         # Lipid keys are things like 'CHOL' or 'DOPC'
-        lipid_keys = lipid_resname_dictionary.keys()
+        lipid_keys = self.resname_dict.keys()
         bilayer_selection_dictionary = {}
         
         for group in ['headgroups', 'tails', 'methyls']:
-            # Create an empty selection to be unioned (requires version 0.17 MDAnalysis) with when each resname is analyzed
-            temp_sel = universe.select_atoms('resname NONEXISTENT')
+            # Create an 'empty selection' (requires version 0.17 MDAnalysis) to be unioned with other selections when each resname is analyzed
+            temp_sel = self.universe.select_atoms('resname NONEXISTENT')
             for key in lipid_keys:
+                if not self.lipid_groups_dictionary.has_key(key):
+                    raise Exception(key+" was not found in the lipid_resname_dictionary.")
                 if self.lipid_groups_dictionary[key].has_key(group):
                     # Get the names of the atoms for the resname associated with key
-                    NAMES=universe.select_atoms("resname "+lipid_resname_dictionary[key]).names
+                    NAMES=self.universe.select_atoms("resname "+self.resname_dict[key]).names
                 
                     # name_range will have the indices of NAMES that correspond to the group of interest
                     name_range = self.lipid_groups_dictionary[key][group]
@@ -708,33 +758,53 @@ class Bilayer_Profile:
                     str_tmp = "name " + NAMES[name_range[0]]
                     for i in name_range[1:]:
                         str_tmp += " or name " + NAMES[i]
-                        temp_sel = temp_sel.union( universe.select_atoms("resname "+lipid_resname_dictionary[key]+" and ("+str_tmp+")") )
+                        temp_sel = temp_sel.union(self.universe.select_atoms("resname "+self.resname_dict[key]+" and ("+str_tmp+")") )
             bilayer_selection_dictionary.update({group:temp_sel})
+        self.bilayer_atomgroup_dictionary = bilayer_selection_dictionary
         
-        self.calculate_simulation_density(bilayer_selection_dictionary, frames)
+        self.calculate_simulation_density(self.bilayer_atomgroup_dictionary, self.frames)
     
 
 
-    def import_simulation_density_from_trajectory(self, structure_file, trajectory_file, frames, lipid_resname_dictionary = {'CHOL':'CHL1', 'DOPC':'DOPC'}):
+    def import_simulation_density_from_trajectory(self, structure_file = None, trajectory_file = None, frames = None, lipid_resname_dictionary = None):
+        
+        ##########
+        if structure_file:
+            self.structure_file = structure_file
+        elif not self.structure_file:
+            raise Exception("No structure file supplied to method or as an attribute to object.")
+        ##########
+        if trajectory_file:
+            self.trajectory_file = trajectory_file
+        elif not self.trajectory_file:
+            raise Exception("No trajectory file supplied to method or as an attribute to object.")
+        ##########
+        if frames:
+            self.frames = frames
+        elif not self.frames:
+            raise Exception("No list of frames was supplied to method or as an attribute to object.")
+        ##########
+        if lipid_resname_dictionary:
+            self.resname_dict = lipid_resname_dictionary
+        ##########
         
         universe = MDAnalysis.Universe(structure_file, trajectory_file)
-        
         self.import_simulation_density_from_universe(universe, frames, lipid_resname_dictionary)
 
 
         
-    def convert_units(self, length_scale_factor, new_units):
-        """length_scale_factor is the multiplicative factor that takes the old length to the new one."""
-        self.units = new_units
-        
-        for i in ['zmin', 'zmax', 'zstep', 'bilayer_center']:
-            if hasattr(self, i):
-                setattr(self, i, getattr(self, i)*length_scale_factor)
-        
-        if self.isneutron:
-            if hasattr(self, 'protein_norm'):
-                self.protein_norm = self.protein_norm * length_scale_factor
-        else:
-            if hasattr(self, 'density_dictionary'):
-                for key in self.density_dictionary.keys():
-                    self.density_dictionary[key] = self.density_dictionary[key]/length_scale_factor
+#    def convert_units(self, length_scale_factor, new_units):
+#        """length_scale_factor is the multiplicative factor that takes the old length to the new one."""
+#        self.units = new_units
+#        
+#        for i in ['zmin', 'zmax', 'zstep', 'bilayer_center']:
+#            if hasattr(self, i):
+#                setattr(self, i, getattr(self, i)*length_scale_factor)
+#        
+#        if self.isneutron:
+#            if hasattr(self, 'protein_norm'):
+#                self.protein_norm = self.protein_norm * length_scale_factor
+#        else:
+#            if hasattr(self, 'density_dictionary'):
+#                for key in self.density_dictionary.keys():
+#                    self.density_dictionary[key] = self.density_dictionary[key]/length_scale_factor

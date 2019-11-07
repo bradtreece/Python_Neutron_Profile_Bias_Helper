@@ -7,9 +7,10 @@ Created on Thu May 10 10:28:12 2018
 """
 
 from classes import Bilayer_Profile
-from classes import Protein_Profile
+from classes import Density_Profile
 from classes import Protein_From_Configuration
 from classes import Protein_From_Simulation
+#from classes import *
 import numpy as np
 
 class Profile_Comparison:
@@ -66,8 +67,8 @@ def compare_simulation_to_reference(Simulation_Profile, Reference_Profile=None, 
 def write_configuration_file(Profile, filename, use_radii = False):
 #### Weighted potential not supported yet
 #def write_configuration_file(Profile, filename, weight_func = None, existing_weights = False):
-    if not isinstance(Profile, Protein_Profile):
-        raise ValueError(Protein_Profile)
+    if not isinstance(Profile, Density_Profile):
+        raise ValueError(Density_Profile)
     if not Profile.isneutron:
         raise Exception('The profile provided is not a neutron profile, please provide a different profile.')
 #### Weights not supported yet
@@ -139,8 +140,8 @@ def write_configuration_file(Profile, filename, use_radii = False):
     f.close()
     
 def prepare_neutron_profile_for_configuration(protein_profile, Bilayer_Profile_Neutron, Bilayer_Profile_MD):
-    if not isinstance(protein_profile, Protein_Profile):
-        raise ValueError(Protein_Profile)
+    if not isinstance(protein_profile, Density_Profile):
+        raise ValueError(Density_Profile)
     if not isinstance(Bilayer_Profile_MD, Bilayer_Profile):
         raise ValueError(Bilayer_Profile)
     if not isinstance(Bilayer_Profile_Neutron, Bilayer_Profile):
