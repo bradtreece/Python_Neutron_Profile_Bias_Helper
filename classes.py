@@ -141,13 +141,13 @@ class Radii:
                     print("Mass dictionary does not have the element associated with atom type '" + name + "'")
                 else:
                     if (round(mass,3) != self.Mass_Dictionary[element]):
-                        print("Element '" + element + "' has incorrect mass: " + `round(mass,3)` +" *** The atom type is '" + name + "', check dictionary.")
+                        print("Element '" + element + "' has incorrect mass: %.3f".format(round(mass,3)) +" *** The atom type is '" + name + "', check dictionary.")
                         break
 
         ### Check that all the atomtypes are in the dictionary ###
         for name, mass in zip(atomselection.names, atomselection.masses):
             if not self.Atom_Type_To_Element_Dictionary.has_key(name):
-                print("Unknown Atom Type '" + name + "' with mass " + `round(mass,3)`)
+                print("Unknown Atom Type '" + name + "' with mass %.3f".format(round(mass,3)))
                 break
         
         radii = []
@@ -259,7 +259,7 @@ class Protein_From_PXP(Density_Profile):
         norm = sum(self.density)*self.zstep
         self.norm = norm
         if norm != 1.0:
-            print('\n\n\nThe profile has area = '+`norm`+""", changing that to be 1.\n The normalization is stored in 'instance_name'.norm\n\n\n""")
+            print('\n\n\nThe profile has area = %.5f'.format(norm)+""", changing that to be 1.\n The normalization is stored in 'instance_name'.norm\n\n\n""")
             self.density = self.density / norm
             if include_confidence:
                 self.msigma = self.msigma / norm
@@ -337,7 +337,7 @@ class Protein_From_Configuration(Density_Profile):
         # Normalize the density provided
         self.norm = sum(self.density)*self.zstep
         if self.norm != 1.0:
-            print('\n\n\nThe profile has area = '+`self.norm`+""", changing that to be 1.\n The normalization is stored in 'instance_name'.norm\n\n\n""")           
+            print('\n\n\nThe profile has area = %.5f'.format(self.norm)+""", changing that to be 1.\n The normalization is stored in 'instance_name'.norm\n\n\n""")           
             self.density = self.density / self.norm
         
         self.units = units
@@ -515,7 +515,7 @@ class Protein_From_Simulation(Density_Profile):
         if len(self.atom_groups) > 1:
             raise Exception('Sorry, this module does not yet support multiple molecules.')
         # Strangely enough, 'bynum a:b' selects atoms by index in gro file a-1 to b-1
-        self.atomselection = u.select_atoms('bynum '+`self.atom_groups[0][0]`+':'+`self.atom_groups[0][1]`)
+        self.atomselection = u.select_atoms('bynum %i'.format(self.atom_groups[0][0])+':%i'.format(self.atom_groups[0][1]))
         
         self.calculate_simulation_density()
         
@@ -585,13 +585,13 @@ class Bilayer_From_PXP(Bilayer_Profile):
             toplevel = True
             while toplevel:
                 print("""Interactive Group Definition:\n1. Add A Group To The Dictionary\n2. List Columns In The File\n3. Exit""")
-                answer = raw_input("""Please Enter The Integer Of Your Choice - """)
+                answer = input("""Please Enter The Integer Of Your Choice - """)
                 if answer == "1":
                     secondlevel = True
-                    answer = raw_input("""Enter The Group Key - """)
+                    answer = input("""Enter The Group Key - """)
                     group_dictionary.update({answer:[]})
                     while secondlevel:
-                        group = raw_input("""Enter Column Title Or EXIT To Leave This Group - """)
+                        group = input("""Enter Column Title Or EXIT To Leave This Group - """)
                         if group == "EXIT":
                             secondlevel = False
                         elif not hasattr(f, group):
