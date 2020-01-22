@@ -141,13 +141,13 @@ class Radii:
                     print("Mass dictionary does not have the element associated with atom type '" + name + "'")
                 else:
                     if (round(mass,3) != self.Mass_Dictionary[element]):
-                        print("Element '" + element + "' has incorrect mass: %.3f".format(round(mass,3)) +" *** The atom type is '" + name + "', check dictionary.")
+                        print("Element '" + element + "' has incorrect mass: {:}".format(round(mass,3)) +" *** The atom type is '" + name + "', check dictionary.")
                         break
 
         ### Check that all the atomtypes are in the dictionary ###
         for name, mass in zip(atomselection.names, atomselection.masses):
             if not self.Atom_Type_To_Element_Dictionary.has_key(name):
-                print("Unknown Atom Type '" + name + "' with mass %.3f".format(round(mass,3)))
+                print("Unknown Atom Type '" + name + "' with mass {:}".format(round(mass,3)))
                 break
         
         radii = []
@@ -259,7 +259,7 @@ class Protein_From_PXP(Density_Profile):
         norm = sum(self.density)*self.zstep
         self.norm = norm
         if norm != 1.0:
-            print('\n\n\nThe profile has area = %.5f'.format(norm)+""", changing that to be 1.\n The normalization is stored in 'instance_name'.norm\n\n\n""")
+            print('\n\n\nThe profile has area = {:}'.format(norm)+""", changing that to be 1.\n The normalization is stored in 'instance_name'.norm\n\n\n""")
             self.density = self.density / norm
             if include_confidence:
                 self.msigma = self.msigma / norm
@@ -337,7 +337,7 @@ class Protein_From_Configuration(Density_Profile):
         # Normalize the density provided
         self.norm = sum(self.density)*self.zstep
         if self.norm != 1.0:
-            print('\n\n\nThe profile has area = %.5f'.format(self.norm)+""", changing that to be 1.\n The normalization is stored in 'instance_name'.norm\n\n\n""")           
+            print('\n\n\nThe profile has area = {:}'.format(self.norm)+""", changing that to be 1.\n The normalization is stored in 'instance_name'.norm\n\n\n""")           
             self.density = self.density / self.norm
         
         self.units = units
@@ -411,10 +411,10 @@ class Protein_From_Simulation(Density_Profile):
             self.radii = length_scale*self.reference_profile.radii
             self.volume = length_scale**3.0 * self.reference_profile.volume
         else:
-            self.zmin = input("What is the start of the z-axis for the density (in Angstroms)? ")
-            self.zstep = input("What is the step size along the z-axis for the density (in Angstroms)? ")
-            tmp_1 = input("At what index do the atoms of interest start in the '.gro' file? ")
-            tmp_2 = input("At what index do the atoms of interest end in the '.gro' file? ")
+            self.zmin = float(input("What is the start of the z-axis for the density (in Angstroms)? "))
+            self.zstep = float(input("What is the step size along the z-axis for the density (in Angstroms)? "))
+            tmp_1 = int(input("At what index do the atoms of interest start in the '.gro' file? "))
+            tmp_2 = int(input("At what index do the atoms of interest end in the '.gro' file? "))
             self.atom_groups = np.array([[tmp_1, tmp_2]])
             self.radii = np.ones(self.atom_groups[0,1] - self.atom_groups[0,0] + 1)
             self.volume = np.sum(self.radii**3.0)
@@ -515,7 +515,7 @@ class Protein_From_Simulation(Density_Profile):
         if len(self.atom_groups) > 1:
             raise Exception('Sorry, this module does not yet support multiple molecules.')
         # Strangely enough, 'bynum a:b' selects atoms by index in gro file a-1 to b-1
-        self.atomselection = u.select_atoms('bynum %i'.format(self.atom_groups[0][0])+':%i'.format(self.atom_groups[0][1]))
+        self.atomselection = u.select_atoms('bynum {:}'.format(self.atom_groups[0][0])+':{:}'.format(self.atom_groups[0][1]))
         
         self.calculate_simulation_density()
         
