@@ -92,7 +92,7 @@ def write_configuration_file(Profile, filename, use_radii = False):
     # Normalize the density provided
     norm = sum(Profile.density)*Profile.zstep
     if norm != 1.0:
-        print('\n\n\nThe profile has area = '+`norm`+""", changing that to be 1.\n    You're welcome.\n\n\n""")
+        print('\n\n\nThe profile has area = {:}'.format(norm)+""", changing that to be 1.\n    You're welcome.\n\n\n""")
         Profile.density = Profile.density / norm
         Profile.msigma = Profile.msigma / norm
         Profile.psigma = Profile.psigma / norm
@@ -101,19 +101,19 @@ def write_configuration_file(Profile, filename, use_radii = False):
     f = open(filename,'w')
     
     tmp = Profile.potential_scaling
-    f.write('u\t'+`tmp[0]`+'\t'+`tmp[1]`+'\n')
+    f.write('u\t{:}\t{:}\n'.format(tmp[0],tmp[1]))
     
     for i in Profile.atom_groups:
-        f.write('n\t'+`i[0]`+'\t'+`i[1]`+'\n')
+        f.write('n\t{:}\t{:}\n'.format(i[0],i[1]))
     
     tmp = Profile.zmin
     tmp2 = Profile.zstep
     tmp3 = tmp + (len(Profile.density)-1)*tmp2
-    f.write('p\t'+`tmp`+'\t'+`tmp3`+'\t'+`tmp2`+'\n')
+    f.write('p\t{:}\t{:}\t{:}\n'.format(tmp,tmp3,tmp2))
     
     f.write('d')
     for i in Profile.density:
-        f.write('\t'+`i`)
+        f.write('\t{:}'.format(i))
     f.write('\n')
 
 ###### Weights for potential, not supported yet
@@ -135,7 +135,7 @@ def write_configuration_file(Profile, filename, use_radii = False):
     if use_radii:
         f.write('r')
         for i in Profile.radii:
-            f.write('\t'+`i`)
+            f.write('\t{:}'.format(i))
             f.write('\n')
     
     f.close()
@@ -170,7 +170,7 @@ def prepare_neutron_profile_for_configuration(Protein_Profile, Bilayer_Profile_N
     # Normalize the density provided
     norm = sum(Protein_Profile.density)*Protein_Profile.zstep
     if norm != 1.0:
-        print('\n\n\nThe profile has area = '+`norm`+""", changing that to be 1.\n    You're welcome.\n\n\n""")
+        print('\n\n\nThe profile has area = {:}'.format(norm)+""", changing that to be 1.\n    You're welcome.\n\n\n""")
         Protein_Profile.density = Protein_Profile.density / norm
         if hasattr(Protein_Profile, 'msigma'):
             Protein_Profile.msigma = Protein_Profile.msigma / norm
