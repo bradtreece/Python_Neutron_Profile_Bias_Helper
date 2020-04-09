@@ -6,13 +6,13 @@ Created on Sun Apr 15 17:47:18 2018
 @author: btreece
 """
 
-from classes import Density_Profile
-from classes import Protein_From_PXP
-from classes import Protein_From_Configuration
-from classes import Protein_From_Simulation
-from classes import Bilayer_Profile
-from classes import Bilayer_From_PXP
-from classes import Bilayer_From_Simulation
+from .classes import Density_Profile
+from .classes import Protein_From_PXP
+from .classes import Protein_From_Configuration
+from .classes import Protein_From_Simulation
+from .classes import Bilayer_Profile
+from .classes import Bilayer_From_PXP
+from .classes import Bilayer_From_Simulation
 #from classes import *
 from matplotlib import pyplot as plt
 
@@ -72,7 +72,7 @@ def Plot_Densities(List_of_Profiles, bilayer_color_dictionary = {}):
             norm = list_of_bilayer_norms[n]
 
         for key in Profile.density_dictionary.keys():
-            if bilayer_color_dictionary.has_key(key):
+            if key in bilayer_color_dictionary:
                 colour = bilayer_color_dictionary[key]
             else:
                 colour = 'black'

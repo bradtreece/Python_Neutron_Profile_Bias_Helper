@@ -108,7 +108,7 @@ class Radii:
     ################ THESE NEED TESTED #########################
     def Add_Entry_To_Current_Atom_Type_To_Element_Dictionary(self, Dictionary_To_Be_Added):
         for element in Dictionary_To_Be_Added.itervalues():
-            if not self.Radius_Dictionary.has_key(element):
+            if element not in self.Radius_Dictionary:
                 print("Element '" + element + "' not found in radius dictionary. Nothing added.")
                 break
         self.Atom_Type_To_Element_Dictionary.update(Dictionary_To_Be_Added)
@@ -135,9 +135,9 @@ class Radii:
         
         ### Check the masses of the atoms against the masses of the corresponding element in dictionary ###
         for name, mass in zip(atomselection.names, atomselection.masses):
-            if self.Atom_Type_To_Element_Dictionary.has_key(name):
+            if name in self.Atom_Type_To_Element_Dictionary:
                 element = self.Atom_Type_To_Element_Dictionary[name]
-                if not self.Mass_Dictionary.has_key(element):
+                if element not in self.Mass_Dictionary:
                     print("Mass dictionary does not have the element associated with atom type '" + name + "'")
                 else:
                     if (round(mass,3) != self.Mass_Dictionary[element]):
@@ -146,7 +146,7 @@ class Radii:
 
         ### Check that all the atomtypes are in the dictionary ###
         for name, mass in zip(atomselection.names, atomselection.masses):
-            if not self.Atom_Type_To_Element_Dictionary.has_key(name):
+            if name not in self.Atom_Type_To_Element_Dictionary:
                 print("Unknown Atom Type '" + name + "' with mass {:}".format(round(mass,3)))
                 break
         
@@ -168,15 +168,16 @@ class Density_Profile:
         """length_scale_factor is the multiplicative factor that takes the old length to the new one."""
         self.units = new_units
         
-        for i in ['zmin', 'zmax', 'zstep', 'mean', 'second_moment',
-                  'tracking_of_mean', 'radii', 'bilayer_center', 'protein_norm',
+        for i in ['zmin', 'zmax', 'zstep', 'mean', 'second_moment', 'norm',
+                  'tracking_of_mean', 'radii', 'bilayer_center',
                   'total_density_norm']:
             if hasattr(self, i):
                 setattr(self, i, getattr(self, i)*length_scale_factor)
         
-        if hasattr(self, 'density'):
-            self.density = self.density/length_scale_factor
-            
+        for i in ['density', 'psigma', 'msigma']:
+            if hasattr(self, i):
+                setattr(self, i, getattr(self, i)/length_scale_factor)
+        
         if hasattr(self, 'volume'):
             self.volume = self.volume*(length_scale_factor**3.0)
 
@@ -186,7 +187,7 @@ class Density_Profile:
         if hasattr(self, 'density_dictionary'):
             for key in self.density_dictionary.keys():
                 self.density_dictionary[key] = self.density_dictionary[key]/length_scale_factor
-
+        
 ##################################
 # Profile From Neutron Data File #
 ##################################
@@ -543,11 +544,11 @@ class Protein_From_Simulation(Density_Profile):
 class Bilayer_Profile(Density_Profile):
 #class Bilayer_Profile:
     def __init__(self):
-        POPC_RANGES={'headgroups':range(0,24),'tails':range(24,130),'methyls':range(130,134)}
-        POPG_RANGES={'headgroups':range(0,17),'tails':range(17,123),'methyls':range(123,127)}
-        DOPC_RANGES={'headgroups':range(0,24),'tails':range(24,87)+range(91,134),'methyls':range(87,91)+range(134,138)}
-        DOPS_RANGES={'headgroups':range(0,17),'tails':range(17,80)+range(84,127),'methyls':range(80,84)+range(127,131)}
-        CHOL_RANGES={'tails':range(0,74)}
+        POPC_RANGES={'headgroups':list(range(0,24)),'tails':list(range(24,130)),'methyls':list(range(130,134))}
+        POPG_RANGES={'headgroups':list(range(0,17)),'tails':list(range(17,123)),'methyls':list(range(123,127))}
+        DOPC_RANGES={'headgroups':list(range(0,24)),'tails':list(range(24,87))+list(range(91,134)),'methyls':list(range(87,91))+list(range(134,138))}
+        DOPS_RANGES={'headgroups':list(range(0,17)),'tails':list(range(17,80))+list(range(84,127)),'methyls':list(range(80,84))+list(range(127,131))}
+        CHOL_RANGES={'tails':list(range(0,74))}
         self.lipid_groups_dictionary = {'POPC':POPC_RANGES,'POPG':POPG_RANGES,'DOPC':DOPC_RANGES,'DOPS':DOPS_RANGES,'CHOL':CHOL_RANGES}
     
 class Bilayer_From_PXP(Bilayer_Profile):
@@ -622,7 +623,7 @@ class Bilayer_From_PXP(Bilayer_Profile):
                                 'tethers':['bME','tetherg','tether'],
                                 'tails':['lipid1','methyl1','lipid2','methyl2'],
                                 'substrate':['substrate']}
-        if self.group_dictionary.keys().count('tails') != 1:
+        if list(self.group_dictionary.keys()).count('tails') != 1:
             raise Exception("""A group named 'tails' (tail distribution) must be included for purposes of centering the bilayer.""")
             return
         ##########
@@ -683,7 +684,7 @@ class Bilayer_From_Simulation(Bilayer_Profile):
         norm = len(frames)*sigma*(2*np.pi)**0.5
         
         temp_dict = {}
-        key_list = bilayer_selection_dictionary.keys()
+        key_list = list(bilayer_selection_dictionary.keys())
         z_array = np.arange( self.zmin, self.zmax, self.zstep)
         
         for key in key_list:
@@ -714,7 +715,7 @@ class Bilayer_From_Simulation(Bilayer_Profile):
         
         
         
-    def import_simulation_density_from_universe(self, universe = None, frames = None, lipid_resname_dictionary = None):
+    def import_simulation_density_from_universe(self, universe = None, frames = None, lipid_resname_dictionary = None, zmin = None, zmax = None, zstep = None):
         """ lipid_resname_dictionary gives how each component of the bilayer is labeled in the simulation - i.e. {'DOPC':'DOPC, 'CHOL':'CHL1'} """
         ##########
         if universe:
@@ -731,11 +732,16 @@ class Bilayer_From_Simulation(Bilayer_Profile):
         ##########
         if lipid_resname_dictionary:
             self.resname_dict = lipid_resname_dictionary
-        ##########            
-        z_bbox = self.universe.dimensions[2]
-        self.zmin = np.min(self.universe.atoms.positions[:,2]) - 0.1*z_bbox
-        self.zmax = np.max(self.universe.atoms.positions[:,2]) + 0.1*z_bbox
-        self.zstep = (self.zmax - self.zmin) / 2500.
+        ##########
+        if zmin and zmax and zstep:
+            self.zmin = zmin
+            self.zmax = zmax
+            self.zstep = zstep
+        else:
+            z_bbox = self.universe.dimensions[2]
+            self.zmin = np.min(self.universe.atoms.positions[:,2]) - 0.1*z_bbox
+            self.zmax = np.max(self.universe.atoms.positions[:,2]) + 0.1*z_bbox
+            self.zstep = (self.zmax - self.zmin) / 2500.
         ##########
         # Lipid keys are things like 'CHOL' or 'DOPC'
         lipid_keys = self.resname_dict.keys()
@@ -745,9 +751,9 @@ class Bilayer_From_Simulation(Bilayer_Profile):
             # Create an 'empty selection' (requires version 0.17 MDAnalysis) to be unioned with other selections when each resname is analyzed
             temp_sel = self.universe.select_atoms('resname NONEXISTENT')
             for key in lipid_keys:
-                if not self.lipid_groups_dictionary.has_key(key):
+                if key not in self.lipid_groups_dictionary:
                     raise Exception(key+" was not found in the lipid_resname_dictionary.")
-                if self.lipid_groups_dictionary[key].has_key(group):
+                if group in self.lipid_groups_dictionary[key]:
                     # Get the names of the atoms for the resname associated with key
                     NAMES=self.universe.select_atoms("resname "+self.resname_dict[key]).names
                 
